@@ -475,6 +475,12 @@ void TraceFrameFast(unsigned char playerX, unsigned char playerY, uint16_t playe
 			 0x01,0x00,
 			 0x08,0x00);
 
+	// Use DMA to copy texture.
+	dma_stepped_copy(g_texture8+(tx*64),0x40000L+(x&7)+(x>>3)*(64L*25L)+(ws<<3),
+			 sso*2,
+			 0+(ts>>10),ts>>2,
+			 0x08,0x00);
+#if 0
         for(y = 0; y < sso * 2; y++)
         {
             // paint texture pixel
@@ -490,7 +496,8 @@ void TraceFrameFast(unsigned char playerX, unsigned char playerY, uint16_t playe
             }
             plot_pixel(x,y+ws,tv);
         }
-
+#endif
+	
 	// Use DMA job with stepped destination to draw floor
 	dma_stepped_copy(sky_texture+(ws+sso*2),0x40000L+(x&7)+(x>>3)*(64L*25L)+((ws+sso*2)<<3),
 			 ws,
