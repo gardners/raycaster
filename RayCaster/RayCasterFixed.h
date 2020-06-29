@@ -1,6 +1,6 @@
 #pragma once
 #include "RayCaster.h"
-    void Start(uint16_t playerX, uint16_t playerY, int16_t playerA);
+    void Start(uint16_t playerX, uint16_t playerY, int16_t playerDirection);
     void Trace(uint16_t screenX, uint8_t screenY, uint8_t textureNo, uint8_t textureX, uint16_t textureY, uint16_t textureStep);
 
     uint16_t _playerX;
