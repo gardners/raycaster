@@ -30,7 +30,7 @@ int16_t (uint8_t v, int16_t f)
     return uf;
 }
 
-int16_t MulTan(uint8_t value, bool inverse, uint8_t quarter, uint8_t angle, const uint16_t* lookupTable)
+int16_t MulTan(uint8_t value, char inverse, uint8_t quarter, uint8_t angle, const uint16_t* lookupTable)
 {
     uint8_t signedValue = value;
     if(inverse)
@@ -65,7 +65,7 @@ inline int16_t AbsTan(uint8_t quarter, uint8_t angle, const uint16_t* lookupTabl
     return LOOKUP16(lookupTable, angle);
 }
 
-inline bool IsWall(uint8_t tileX, uint8_t tileY)
+inline char IsWall(uint8_t tileX, uint8_t tileY)
 {
     if(tileX > MAP_X - 1 || tileY > MAP_Y - 1)
     {

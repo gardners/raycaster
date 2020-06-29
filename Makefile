@@ -18,11 +18,10 @@ KICKASS_JAR = KickAss/KickAss.jar
 
 VIVADO=	./vivado_wrapper
 
-CC65=  cc65/bin/cc65
-CA65=  cc65/bin/ca65 --cpu 4510
-LD65=  cc65/bin/ld65 -t none
-CL65=  cc65/bin/cl65 --config src/tests/vicii.cfg
-GHDL=  ghdl/build/bin/ghdl
+CC65=  cc65
+CA65=  ca65 --cpu 4510
+LD65=  ld65 -t none
+CL65=  cl65 --config src/tests/vicii.cfg
 
 CBMCONVERT=	cbmconvert/cbmconvert
 
@@ -185,10 +184,20 @@ $(EXAMPLEDIR)/modplay.prg:       $(EXAMPLEDIR)/modplay.c $(CC65)
 	git submodule update
 	$(CL65) -I $(SRCDIR)/mega65-libc/cc65/include -O -o $*.prg --mapfile $*.map $<  $(SRCDIR)/mega65-libc/cc65/src/*.c $(SRCDIR)/mega65-libc/cc65/src/*.s
 
-$(EXAMPLEDIR)/raycaster.prg:       $(EXAMPLEDIR)/raycaster.c $(CC65)
+RAYCASTERHDRS=	RayCaster/RayCasterData.h \
+		RayCaster/RayCasterFixed.h \
+		RayCaster/RayCaster.h \
+		RayCaster/Renderer.h \
+		RayCaster/RayCasterTables.h
+
+RAYCASTERSRCS=	RayCaster/RayCasterFixed.c \
+		RayCaster/Renderer.c \
+		main.c
+
+raycaster.prg:       $(RAYCASTERSRCS) $(RAYCASTERHDRS)
 	git submodule init
 	git submodule update
-	$(CL65) -I $(SRCDIR)/mega65-libc/cc65/include -O -o $*.prg --mapfile $*.map $<  $(SRCDIR)/mega65-libc/cc65/src/*.c $(SRCDIR)/mega65-libc/cc65/src/*.s
+	$(CL65) -I $(SRCDIR)/mega65-libc/cc65/include -O -o $*.prg --mapfile $*.map $(RAYCASTERSRCS) $(SRCDIR)/mega65-libc/cc65/src/*.c $(SRCDIR)/mega65-libc/cc65/src/*.s
 
 $(TESTDIR)/ultrasoundtest.prg:       $(TESTDIR)/ultrasoundtest.c $(CC65)
 	git submodule init
