@@ -479,7 +479,7 @@ void TraceFrameFast(unsigned char playerX, unsigned char playerY, uint16_t playe
       POKE(0xD020,0x80);
         Trace(x, &sso, &tn, &tc, &tso, &tst);
 
-	if (sso>HORIZON_HEIGHT) sso=HORIZON_HEIGHT;
+	if (sso>2*HORIZON_HEIGHT) sso=2*HORIZON_HEIGHT;
 	
         tx = (tc >> 2);
         ws = HORIZON_HEIGHT - sso;
