@@ -6,6 +6,10 @@
 #define LOOKUP_STORAGE extern
 #include "RayCasterTables.h"
 
+#define true 1
+#define false 0
+
+
 // (v * f) >> 8
 uint16_t MulU(uint8_t v, uint16_t f)
 {
@@ -20,7 +24,7 @@ uint16_t MulU(uint8_t v, uint16_t f)
         return PEEK(0xD778)+(PEEK(0xD779)<<8);
 }
 
-int16_t (uint8_t v, int16_t f)
+int16_t MulS(uint8_t v, int16_t f)
 {
     const uint16_t uf = MulU(v, ABS(f));
     if(f < 0)
@@ -56,7 +60,7 @@ int16_t MulTan(uint8_t value, char inverse, uint8_t quarter, uint8_t angle, cons
     return MulU(signedValue, LOOKUP16(lookupTable, angle));
 }
 
-inline int16_t AbsTan(uint8_t quarter, uint8_t angle, const uint16_t* lookupTable)
+int16_t AbsTan(uint8_t quarter, uint8_t angle, const uint16_t* lookupTable)
 {
     if(quarter & 1)
     {
@@ -65,7 +69,7 @@ inline int16_t AbsTan(uint8_t quarter, uint8_t angle, const uint16_t* lookupTabl
     return LOOKUP16(lookupTable, angle);
 }
 
-inline char IsWall(uint8_t tileX, uint8_t tileY)
+char IsWall(uint8_t tileX, uint8_t tileY)
 {
     if(tileX > MAP_X - 1 || tileY > MAP_Y - 1)
     {
@@ -236,7 +240,10 @@ WallHit:
 void Trace(
     uint16_t screenX, uint8_t* screenY, uint8_t* textureNo, uint8_t* textureX, uint16_t* textureY, uint16_t* textureStep)
 {
-    uint16_t rayAngle = static_cast<uint16_t>(_playerA + LOOKUP16(g_deltaAngle, screenX));
+    int16_t distance = 0;
+    int16_t deltaX;
+    int16_t deltaY;
+    uint16_t rayAngle = (_playerA + LOOKUP16(g_deltaAngle, screenX));
 
     // neutralize artefacts around edges
     switch(rayAngle % 256)
@@ -252,12 +259,9 @@ void Trace(
     }
     rayAngle %= 1024;
 
-    int16_t deltaX;
-    int16_t deltaY;
     CalculateDistance(_playerX, _playerY, rayAngle, &deltaX, &deltaY, textureNo, textureX);
 
     // distance = deltaY * cos(playerA) + deltaX * sin(playerA)
-    int16_t distance = 0;
     if(_playerA == 0)
     {
         distance += deltaY;
