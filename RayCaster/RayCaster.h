@@ -4,8 +4,8 @@
 
 #include <hal.h>
 #include <memory.h>
-#include <dirent.h>
-#include <fileio.h>
+//#include <dirent.h>
+//#include <fileio.h>
 
 #define TABLES_320
 #define SCREEN_WIDTH (uint16_t)320

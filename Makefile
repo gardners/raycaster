@@ -191,7 +191,6 @@ RAYCASTERHDRS=	RayCaster/RayCasterData.h \
 		RayCaster/RayCasterTables.h
 
 RAYCASTERSRCS=	RayCaster/RayCasterFixed.c \
-		RayCaster/Renderer.c \
 		main.c
 
 raycaster.prg:       $(RAYCASTERSRCS) $(RAYCASTERHDRS)
