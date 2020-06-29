@@ -7,6 +7,9 @@
 #include <dirent.h>
 #include <fileio.h>
 
+void TraceFrame(unsigned char playerX, unsigned char playerY, uint16_t playerDirection);
+
+
 unsigned short i,j;
 unsigned char a,b,c,d;
 
@@ -58,7 +61,7 @@ unsigned long pixel_addr;
 unsigned char pixel_temp;
 void plot_pixel(unsigned long x,unsigned char y,unsigned char colour)
 {
-  pixel_addr=((x&0xf)>>1)+64L*25L*(x>>4);
+  pixel_addr=(x&7)+64L*25L*(x>>3);
   pixel_addr+=y<<3;
 
   lpoke(0x40000L+pixel_addr,colour);
@@ -67,4 +70,31 @@ void plot_pixel(unsigned long x,unsigned char y,unsigned char colour)
 
 void main(void)
 {
+    int i;
+
+    asm ( "sei" );
+
+    
+  // Fast CPU, M65 IO
+  POKE(0,65);
+  POKE(0xD02F,0x47);
+  POKE(0xD02F,0x53);
+
+  while(PEEK(0xD610)) POKE(0xD610,0);
+  
+  POKE(0xD020,0);
+  POKE(0xD021,0);
+
+  graphics_mode();
+
+  // Set up grey-scale palette
+  for(i=0;i<256;i++) {
+    POKE(0xD100+i,(i>>4)+((i&7)<<4));
+  }
+  
+  while(1)
+    {
+      TraceFrame(5,5,256);
+      POKE(0xD020,PEEK(0xD012)&0x0f);
+    }
 }
