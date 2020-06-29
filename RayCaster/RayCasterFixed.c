@@ -458,6 +458,8 @@ void TraceFrameFast(unsigned char playerX, unsigned char playerY, uint16_t playe
 
         Trace(x, &sso, &tn, &tc, &tso, &tst);
 
+	if (sso>HORIZON_HEIGHT) sso=HORIZON_HEIGHT;
+	
         tx = (tc >> 2);
         ws = HORIZON_HEIGHT - sso;
         if(ws < 0)
@@ -480,23 +482,6 @@ void TraceFrameFast(unsigned char playerX, unsigned char playerY, uint16_t playe
 			 sso*2,
 			 0+(ts>>10),ts>>2,
 			 0x08,0x00);
-#if 0
-        for(y = 0; y < sso * 2; y++)
-        {
-            // paint texture pixel
-            ty = (to >> 10);
-            tv = g_texture8[(ty << 6) + tx];
-
-            to += ts;
-
-            if(tn == 1 && tv > 0)
-            {
-                // dark wall
-                tv >>= 1;
-            }
-            plot_pixel(x,y+ws,tv);
-        }
-#endif
 	
 	// Use DMA job with stepped destination to draw floor
 	dma_stepped_copy(sky_texture+(ws+sso*2),0x40000L+(x&7)+(x>>3)*(64L*25L)+((ws+sso*2)<<3),

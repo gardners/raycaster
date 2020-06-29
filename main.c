@@ -78,6 +78,8 @@ void plot_pixel(unsigned long x,unsigned char y,unsigned char colour)
 void main(void)
 {
     int i;
+    uint8_t px=5;
+    uint8_t py=5;
 
     asm ( "sei" );
 
@@ -104,7 +106,43 @@ void main(void)
   i=0;
   while(1)
     {
-      TraceFrameFast(5,5,i);
+      if (px<1) px=1;
+      if (py<1) py=1;
+      if (px>30) px=30;
+      if (py>30) py=30;
+      
+      TraceFrameFast(px,py,i);
+
+      i&=0x300;
+      
+      if (PEEK(0xD610)) {
+	switch(PEEK(0xD610)) {
+	  // Rotate left/right
+	case 0x1d: case 0x44: case 0x64: i+=0x100; i&=0x3ff; break;
+	case 0x9d: case 0x41: case 0x61: i-=0x100; i&=0x3ff; break;
+
+	  // Move forewards/backwards
+	case 0x11: case 0x53: case 0x73:
+	  switch(i) {
+	  case 0: py--; break;
+	  case 0x100: px--; break;
+	  case 0x200: py++; break;
+	  case 0x300: px++; break;
+	  }
+	  break;
+	case 0x91: case 0x57: case 0x77:
+	  POKE(0xD020,PEEK(0xD012));
+	  switch(i) {
+	  case 0: py++; break;
+	  case 0x100: px++; break;
+	  case 0x200: py--; break;
+	  case 0x300: px--; break;
+	  }
+	  break;
+	}
+	POKE(0xD610,0);
+      }
+      
       //      i++; i&=0x3ff;
       POKE(0xD020,PEEK(0xD012)&0x0f);
     }
