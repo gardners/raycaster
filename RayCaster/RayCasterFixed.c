@@ -15,17 +15,22 @@ int16_t  _playerA;
 uint8_t  _viewQuarter;
 uint8_t  _viewAngle;
 
+
+void setup_multiplier(void)
+{
+  POKE(0xD771,0);
+  POKE(0xD772,0);
+  POKE(0xD773,0);
+  POKE(0xD776,0);
+  POKE(0xD777,0);
+}
+
 // (v * f) >> 8
 uint16_t MulU(uint8_t v, uint16_t f)
 {
 	POKE(0xD770,v);
-	POKE(0xD771,0);
-	POKE(0xD772,0);
-	POKE(0xD773,0);
 	POKE(0xD774,f & 0xff);
 	POKE(0xD775,f>>8);
-	POKE(0xD776,0);
-	POKE(0xD777,0);
         return PEEK(0xD778)+(PEEK(0xD779)<<8);
 }
 
@@ -441,21 +446,26 @@ void dma_stepped_copy(long src, long dst,uint16_t count,
   POKE(0xD705,(uint16_t)(&dlist)&0xff);
 }
 
+void setup_sky(void)
+{
+  // Calculate sky texture
+  for(y = 0; y < HORIZON_HEIGHT; y++)
+    {
+      sky_texture[y]=96+(HORIZON_HEIGHT - y);
+      sky_texture[HORIZON_HEIGHT+y]=96+(y-HORIZON_HEIGHT);
+    }
+    
+}
+
 
 void TraceFrameFast(unsigned char playerX, unsigned char playerY, uint16_t playerDirection)
 {
     Start(playerX<<8, playerY<<8, playerDirection);
 
-    // Calculate sky texture
-    for(y = 0; y < HORIZON_HEIGHT; y++)
-      {
-        sky_texture[y]=96+(HORIZON_HEIGHT - y);
-        sky_texture[HORIZON_HEIGHT+y]=96+(y-HORIZON_HEIGHT);
-      }
-    
     for(x = 0; x < SCREEN_WIDTH; x++)
     {
 
+      POKE(0xD020,0x80);
         Trace(x, &sso, &tn, &tc, &tso, &tst);
 
 	if (sso>HORIZON_HEIGHT) sso=HORIZON_HEIGHT;
@@ -470,6 +480,8 @@ void TraceFrameFast(unsigned char playerX, unsigned char playerY, uint16_t playe
         to = tso;
         ts = tst;
 
+      POKE(0xD020,0x00);
+	
 	// Plot upper horizon part of the image
 	// Use a DMA job with stepped destination
 	dma_stepped_copy(sky_texture,0x40000L+(x&7)+(x>>3)*(64L*25L)+(0<<3),
@@ -477,11 +489,15 @@ void TraceFrameFast(unsigned char playerX, unsigned char playerY, uint16_t playe
 			 0x01,0x00,
 			 0x08,0x00);
 
+      POKE(0xD020,0x00);
+	
 	// Use DMA to copy texture.
 	dma_stepped_copy(g_texture8+(tx*64),0x40000L+(x&7)+(x>>3)*(64L*25L)+(ws<<3),
 			 sso*2,
 			 0+(ts>>10),ts>>2,
 			 0x08,0x00);
+
+      POKE(0xD020,0x00);
 	
 	// Use DMA job with stepped destination to draw floor
 	dma_stepped_copy(sky_texture+(ws+sso*2),0x40000L+(x&7)+(x>>3)*(64L*25L)+((ws+sso*2)<<3),
@@ -489,6 +505,7 @@ void TraceFrameFast(unsigned char playerX, unsigned char playerY, uint16_t playe
 			 0x01,0x00,
 			 0x08,0x00);
 	
+      POKE(0xD020,0x00);
 
     }
 }

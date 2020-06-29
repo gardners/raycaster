@@ -9,6 +9,8 @@
 
 void TraceFrame(unsigned char playerX, unsigned char playerY, uint16_t playerDirection);
 void TraceFrameFast(unsigned char playerX, unsigned char playerY, uint16_t playerDirection);
+void setup_sky(void);
+void setup_multiplier(void);
 
 
 unsigned short i,j;
@@ -77,6 +79,7 @@ void plot_pixel(unsigned long x,unsigned char y,unsigned char colour)
 
 void main(void)
 {
+  char dma_draw=1;
     int i;
     uint8_t px=5;
     uint8_t py=5;
@@ -103,6 +106,9 @@ void main(void)
     POKE(0xD300+i,(i>>4)+((i&7)<<4));
   }
 
+  setup_sky();
+  setup_multiplier();
+  
   i=0;
   while(1)
     {
@@ -110,13 +116,17 @@ void main(void)
       if (py<1) py=1;
       if (px>30) px=30;
       if (py>30) py=30;
-      
-      TraceFrameFast(px,py,i);
+
+      if (dma_draw)
+	TraceFrameFast(px,py,i);
+      else
+	TraceFrame(px,py,i);
 
       i&=0x300;
       
       if (PEEK(0xD610)) {
 	switch(PEEK(0xD610)) {
+	case 0xF1: dma_draw^=1; break;
 	  // Rotate left/right
 	case 0x1d: case 0x44: case 0x64: i+=0x100; i&=0x3ff; break;
 	case 0x9d: case 0x41: case 0x61: i-=0x100; i&=0x3ff; break;
