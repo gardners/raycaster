@@ -8,6 +8,7 @@
 #include <fileio.h>
 
 void TraceFrame(unsigned char playerX, unsigned char playerY, uint16_t playerDirection);
+void TraceFrameFast(unsigned char playerX, unsigned char playerY, uint16_t playerDirection);
 
 
 unsigned short i,j;
@@ -28,7 +29,13 @@ void graphics_mode(void)
   POKE(0xD031,0xC0);
   // Adjust D016 smooth scrolling for VIC-III H640 offset
   POKE(0xD016,0xC9);
-  // 640x200 16bits per char, 16 pixels wide per char
+
+  // H320, fast CPU
+  POKE(0xD031,0x40);
+  // Adjust D016 smooth scrolling for VIC-III H320 offset
+  POKE(0xD016,0xC8);
+
+  // 640x200 16bits per char, 8 pixels wide per char
   // = 640/8 x 16 bits = 160 bytes per row
   POKE(0xD058,160);
   POKE(0xD059,160>>8);
@@ -90,11 +97,15 @@ void main(void)
   // Set up grey-scale palette
   for(i=0;i<256;i++) {
     POKE(0xD100+i,(i>>4)+((i&7)<<4));
+    POKE(0xD200+i,(i>>4)+((i&7)<<4));
+    POKE(0xD300+i,(i>>4)+((i&7)<<4));
   }
-  
+
+  i=0;
   while(1)
     {
-      TraceFrame(5,5,256);
+      TraceFrameFast(5,5,i);
+      //      i++; i&=0x3ff;
       POKE(0xD020,PEEK(0xD012)&0x0f);
     }
 }

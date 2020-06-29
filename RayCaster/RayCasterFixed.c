@@ -393,3 +393,111 @@ void TraceFrame(unsigned char playerX, unsigned char playerY, uint16_t playerDir
         }
     }
 }
+
+uint8_t sky_texture[0x100];
+
+uint8_t dlist[29]={
+  0x0a, // F018A style job
+  0x80,0x00,0x81,0x00, // src and dst both in first 1MB
+  0x83,0x01,0x82,0x00, // src skip
+  0x85,0x01,0x84,0x00, // dst skip
+  0x86,0x00, // No transparency
+  0x87,0x00, // Set transparent colour
+  0x00, // No more jobs
+
+  0x00, // Copy, not chained
+  0x00,0x00, // size
+  0x00,0x00, // src
+  0x00, // src bank
+  0x00,0x00, // dst
+  0x00, // dst bank
+  0x00,0x00 // modulo (unused)
+  
+};
+
+void dma_stepped_copy(long src, long dst,uint16_t count,
+		      uint8_t step_src_whole,uint8_t step_src_fraction,
+		      uint8_t step_dst_whole,uint8_t step_dst_fraction)
+{
+  if (!count) return;
+  dlist[6]=step_src_whole;
+  dlist[8]=step_src_fraction;
+  dlist[6]=step_src_whole;
+  dlist[8]=step_src_fraction;
+  dlist[10]=step_dst_whole;
+  dlist[12]=step_dst_fraction;
+  dlist[14]=0; // no transparency
+  dlist[19]=count&0xff;
+  dlist[20]=count>>8;
+  dlist[21]=src&0xff;
+  dlist[22]=src>>8;
+  dlist[23]=src>>16;
+  dlist[24]=dst&0xff;
+  dlist[25]=dst>>8;
+  dlist[26]=dst>>16;
+
+  POKE(0xD702,0x00);
+  POKE(0xD701,(uint16_t)(&dlist)>>8);
+  POKE(0xD705,(uint16_t)(&dlist)&0xff);
+}
+
+
+void TraceFrameFast(unsigned char playerX, unsigned char playerY, uint16_t playerDirection)
+{
+    Start(playerX<<8, playerY<<8, playerDirection);
+
+    // Calculate sky texture
+    for(y = 0; y < HORIZON_HEIGHT; y++)
+      {
+        sky_texture[y]=96+(HORIZON_HEIGHT - y);
+        sky_texture[HORIZON_HEIGHT+y]=96+(y-HORIZON_HEIGHT);
+      }
+    
+    for(x = 0; x < SCREEN_WIDTH; x++)
+    {
+
+        Trace(x, &sso, &tn, &tc, &tso, &tst);
+
+        tx = (tc >> 2);
+        ws = HORIZON_HEIGHT - sso;
+        if(ws < 0)
+        {
+            ws  = 0;
+            sso = HORIZON_HEIGHT;
+        }
+        to = tso;
+        ts = tst;
+
+	// Plot upper horizon part of the image
+	// Use a DMA job with stepped destination
+	dma_stepped_copy(sky_texture,0x40000L+(x&7)+(x>>3)*(64L*25L)+(0<<3),
+			 ws,
+			 0x01,0x00,
+			 0x08,0x00);
+
+        for(y = 0; y < sso * 2; y++)
+        {
+            // paint texture pixel
+            ty = (to >> 10);
+            tv = g_texture8[(ty << 6) + tx];
+
+            to += ts;
+
+            if(tn == 1 && tv > 0)
+            {
+                // dark wall
+                tv >>= 1;
+            }
+            plot_pixel(x,y+ws,tv);
+        }
+
+	// Use DMA job with stepped destination to draw floor
+	dma_stepped_copy(sky_texture+(ws+sso*2),0x40000L+(x&7)+(x>>3)*(64L*25L)+((ws+sso*2)<<3),
+			 ws,
+			 0x01,0x00,
+			 0x08,0x00);
+	
+
+    }
+}
+
