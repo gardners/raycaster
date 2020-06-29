@@ -458,13 +458,24 @@ void setup_sky(void)
 }
 
 
+unsigned long x_offset;
+uint16_t sso2;
+
 void TraceFrameFast(unsigned char playerX, unsigned char playerY, uint16_t playerDirection)
 {
     Start(playerX<<8, playerY<<8, playerDirection);
 
+
+    x_offset=0x40000;
+    
     for(x = 0; x < SCREEN_WIDTH; x++)
     {
 
+      if (x) {
+	if (x&7) x_offset++;
+	else x_offset+=64*25-7;
+      }
+      
       POKE(0xD020,0x80);
         Trace(x, &sso, &tn, &tc, &tso, &tst);
 
@@ -480,27 +491,31 @@ void TraceFrameFast(unsigned char playerX, unsigned char playerY, uint16_t playe
         to = tso;
         ts = tst;
 
-      POKE(0xD020,0x00);
+	sso2=sso<<1;
 	
+      POKE(0xD020,0x00);
+      
 	// Plot upper horizon part of the image
 	// Use a DMA job with stepped destination
-	dma_stepped_copy(sky_texture,0x40000L+(x&7)+(x>>3)*(64L*25L)+(0<<3),
-			 ws,
-			 0x01,0x00,
-			 0x08,0x00);
+      dma_stepped_copy(sky_texture,x_offset,
+		       ws,
+		       0x01,0x00,
+		       0x08,0x00);
 
       POKE(0xD020,0x00);
 	
 	// Use DMA to copy texture.
-	dma_stepped_copy(g_texture8+(tx*64),0x40000L+(x&7)+(x>>3)*(64L*25L)+(ws<<3),
-			 sso*2,
+      // XXX Textures are sideways in RAM compared with how we can get the DMA to step through them
+      // A truly optimised version would fix this.
+	dma_stepped_copy(g_texture8+(tx<<6),x_offset+(ws<<3),
+			 sso2,
 			 0+(ts>>10),ts>>2,
 			 0x08,0x00);
 
       POKE(0xD020,0x00);
 	
 	// Use DMA job with stepped destination to draw floor
-	dma_stepped_copy(sky_texture+(ws+sso*2),0x40000L+(x&7)+(x>>3)*(64L*25L)+((ws+sso*2)<<3),
+	dma_stepped_copy(sky_texture+(ws+sso*2),x_offset+((ws+sso2)<<3),
 			 ws,
 			 0x01,0x00,
 			 0x08,0x00);
