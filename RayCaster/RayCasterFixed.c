@@ -7,18 +7,22 @@
 #include "RayCasterTables.h"
 
 // (v * f) >> 8
-uint16_t RayCasterFixed::MulU(uint8_t v, uint16_t f)
+uint16_t MulU(uint8_t v, uint16_t f)
 {
-    const uint8_t  f_h = f >> 8;
-    const uint8_t  f_l = f % 256;
-    const uint16_t hm  = v * f_h;
-    const uint16_t lm  = v * f_l;
-    return hm + (lm >> 8);
+	POKE(0xD770,v);
+	POKE(0xD771,0);
+	POKE(0xD772,0);
+	POKE(0xD773,0);
+	POKE(0xD774,f & 0xff);
+	POKE(0xD775,f>>8);
+	POKE(0xD776,0);
+	POKE(0xD777,0);
+        return PEEK(0xD778)+(PEEK(0xD779)<<8);
 }
 
-int16_t RayCasterFixed::MulS(uint8_t v, int16_t f)
+int16_t (uint8_t v, int16_t f)
 {
-    const uint16_t uf = MulU(v, static_cast<uint16_t>(ABS(f)));
+    const uint16_t uf = MulU(v, ABS(f));
     if(f < 0)
     {
         return ~uf;
@@ -26,7 +30,7 @@ int16_t RayCasterFixed::MulS(uint8_t v, int16_t f)
     return uf;
 }
 
-int16_t RayCasterFixed::MulTan(uint8_t value, bool inverse, uint8_t quarter, uint8_t angle, const uint16_t* lookupTable)
+int16_t MulTan(uint8_t value, bool inverse, uint8_t quarter, uint8_t angle, const uint16_t* lookupTable)
 {
     uint8_t signedValue = value;
     if(inverse)
@@ -52,7 +56,7 @@ int16_t RayCasterFixed::MulTan(uint8_t value, bool inverse, uint8_t quarter, uin
     return MulU(signedValue, LOOKUP16(lookupTable, angle));
 }
 
-inline int16_t RayCasterFixed::AbsTan(uint8_t quarter, uint8_t angle, const uint16_t* lookupTable)
+inline int16_t AbsTan(uint8_t quarter, uint8_t angle, const uint16_t* lookupTable)
 {
     if(quarter & 1)
     {
@@ -61,7 +65,7 @@ inline int16_t RayCasterFixed::AbsTan(uint8_t quarter, uint8_t angle, const uint
     return LOOKUP16(lookupTable, angle);
 }
 
-inline bool RayCasterFixed::IsWall(uint8_t tileX, uint8_t tileY)
+inline bool IsWall(uint8_t tileX, uint8_t tileY)
 {
     if(tileX > MAP_X - 1 || tileY > MAP_Y - 1)
     {
@@ -70,7 +74,7 @@ inline bool RayCasterFixed::IsWall(uint8_t tileX, uint8_t tileY)
     return LOOKUP8(g_map, (tileX >> 3) + (tileY << (MAP_XS - 3))) & (1 << (8 - (tileX & 0x7)));
 }
 
-void RayCasterFixed::LookupHeight(uint16_t distance, uint8_t* height, uint16_t* step)
+void LookupHeight(uint16_t distance, uint8_t* height, uint16_t* step)
 {
     if(distance >= 256)
     {
@@ -90,7 +94,7 @@ void RayCasterFixed::LookupHeight(uint16_t distance, uint8_t* height, uint16_t* 
     }
 }
 
-void RayCasterFixed::CalculateDistance(
+void CalculateDistance(
     uint16_t rayX, uint16_t rayY, uint16_t rayA, int16_t* deltaX, int16_t* deltaY, uint8_t* textureNo, uint8_t* textureX)
 {
     register int8_t  tileStepX;
@@ -229,7 +233,7 @@ WallHit:
 
 // (playerX, playerY) is 8 box coordinate bits, 8 inside coordinate bits
 // (playerA) is full circle as 1024
-void RayCasterFixed::Trace(
+void Trace(
     uint16_t screenX, uint8_t* screenY, uint8_t* textureNo, uint8_t* textureX, uint16_t* textureY, uint16_t* textureStep)
 {
     uint16_t rayAngle = static_cast<uint16_t>(_playerA + LOOKUP16(g_deltaAngle, screenX));
@@ -316,7 +320,7 @@ void RayCasterFixed::Trace(
     }
 }
 
-void RayCasterFixed::Start(uint16_t playerX, uint16_t playerY, int16_t playerA)
+void Start(uint16_t playerX, uint16_t playerY, int16_t playerA)
 {
     _viewQuarter = playerA >> 8;
     _viewAngle   = playerA % 256;
@@ -324,7 +328,3 @@ void RayCasterFixed::Start(uint16_t playerX, uint16_t playerY, int16_t playerA)
     _playerY     = playerY;
     _playerA     = playerA;
 }
-
-RayCasterFixed::RayCasterFixed() : RayCaster() {}
-
-RayCasterFixed::~RayCasterFixed() {}
