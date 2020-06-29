@@ -122,10 +122,12 @@ void main(void)
       else
 	TraceFrame(px,py,i);
 
-      i&=0x300;
+      i&=0x3FF;
       
       if (PEEK(0xD610)) {
 	switch(PEEK(0xD610)) {
+	case 0x31: i-=10; break;
+	case 0x32: i+=10; break;
 	case 0xF1: dma_draw^=1; break;
 	  // Rotate left/right
 	case 0x1d: case 0x44: case 0x64: i+=0x100; i&=0x3ff; break;
