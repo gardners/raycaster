@@ -51,7 +51,7 @@ int16_t MulTan(uint8_t value, char inverse, uint8_t quarter, uint8_t angle, cons
     {
         if(value == 0)
         {
-            if(quarter % 2 == 1)
+            if(quarter & 1)
             {
                 return -AbsTan(quarter, angle, lookupTable);
             }
@@ -63,7 +63,7 @@ int16_t MulTan(uint8_t value, char inverse, uint8_t quarter, uint8_t angle, cons
     {
         return 0;
     }
-    if(quarter % 2 == 1)
+    if(quarter & 1)
     {
         return -MulU(signedValue, LOOKUP16(lookupTable, INVERT(angle)));
     }
@@ -117,9 +117,9 @@ void CalculateDistance(
     register int16_t interceptY = rayY;
 
     const uint8_t quarter = rayA >> 8;
-    const uint8_t angle   = rayA % 256;
-    const uint8_t offsetX = rayX % 256;
-    const uint8_t offsetY = rayY % 256;
+    const uint8_t angle   = rayA & 0xff;
+    const uint8_t offsetX = rayX & 0xff;
+    const uint8_t offsetY = rayY & 0xff;
 
     uint8_t tileX = rayX >> 8;
     uint8_t tileY = rayY >> 8;
@@ -128,7 +128,7 @@ void CalculateDistance(
 
     if(angle == 0)
     {
-        switch(quarter % 2)
+        switch(quarter & 1)
         {
         case 0:
             tileStepX = 0;
@@ -256,7 +256,7 @@ void Trace(
     uint16_t rayAngle = (_playerA + LOOKUP16(g_deltaAngle, screenX));
 
     // neutralize artefacts around edges
-    switch(rayAngle % 256)
+    switch(rayAngle & 0xff)
     {
     case 1:
     case 254:
@@ -267,7 +267,7 @@ void Trace(
         rayAngle++;
         break;
     }
-    rayAngle %= 1024;
+    rayAngle &= 0x3ff;
 
     CalculateDistance(_playerX, _playerY, rayAngle, &deltaX, &deltaY, textureNo, textureX);
 
@@ -337,7 +337,7 @@ void Trace(
 void Start(uint16_t playerX, uint16_t playerY, int16_t playerA)
 {
     _viewQuarter = playerA >> 8;
-    _viewAngle   = playerA % 256;
+    _viewAngle   = playerA & 0xff;
     _playerX     = playerX;
     _playerY     = playerY;
     _playerA     = playerA;
