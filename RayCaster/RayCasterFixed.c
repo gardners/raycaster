@@ -15,6 +15,10 @@ int16_t  _playerA;
 uint8_t  _viewQuarter;
 uint8_t  _viewAngle;
 
+extern char diag_mode;
+
+void print_text80(unsigned char x,unsigned char y,unsigned char colour,char *msg);
+
 
 void setup_multiplier(void)
 {
@@ -245,16 +249,22 @@ WallHit:
     *deltaY = hitY - rayY;
 }
 
+char msg[80+1];
+
 // (playerX, playerY) is 8 box coordinate bits, 8 inside coordinate bits
 // (playerA) is full circle as 1024
+int32_t distance;
+int16_t deltaX;
+int16_t deltaY;
+uint16_t rayAngle;
 void Trace(
     uint16_t screenX, uint8_t* screenY, uint8_t* textureNo, uint8_t* textureX, uint16_t* textureY, uint16_t* textureStep)
 {
-    int16_t distance = 0;
-    int16_t deltaX;
-    int16_t deltaY;
-    uint16_t rayAngle = (_playerA + LOOKUP16(g_deltaAngle, screenX));
 
+    rayAngle = (_playerA + LOOKUP16(g_deltaAngle, screenX));
+
+    distance=0;
+    
     // neutralize artefacts around edges
     switch(rayAngle & 0xff)
     {
@@ -321,6 +331,8 @@ void Trace(
             distance -= MulS(LOOKUP8(g_sin, INVERT(_viewAngle)), deltaX);
             break;
         }
+    if (distance>8000) distance=8000;
+    if (distance<0) distance=8000;
     if(distance >= MIN_DIST)
     {
         *textureY = 0;
@@ -332,6 +344,15 @@ void Trace(
         *textureY    = LOOKUP16(g_overflowOffset, distance);
         *textureStep = LOOKUP16(g_overflowStep, distance);
     }
+
+
+    if (diag_mode&&(screenX<(25*8))) {
+	snprintf(msg,80,"(%d,%d)%d          ",
+		 _playerX>>8,_playerY>>8,distance);
+	msg[10]=0;
+	print_text80((screenX&7)*10,(screenX>>3),15,msg);
+      }     
+    
 }
 
 void Start(uint16_t playerX, uint16_t playerY, int16_t playerA)
@@ -475,7 +496,7 @@ void TraceFrameFast(unsigned char playerX, unsigned char playerY, uint16_t playe
 	if (x&7) x_offset++;
 	else x_offset+=64*25-7;
       }
-      
+
       POKE(0xD020,0x80);
         Trace(x, &sso, &tn, &tc, &tso, &tst);
 

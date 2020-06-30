@@ -16,6 +16,35 @@ void setup_multiplier(void);
 unsigned short i,j;
 unsigned char a,b,c,d;
 
+unsigned char diag_mode=0;
+
+void text80_mode(void)
+{
+  // Normal 8-bit text mode 
+  POKE(0xD054,0x00);
+  // H640, fast CPU
+  POKE(0xD031,0xC0);
+  // Adjust D016 smooth scrolling for VIC-III H640 offset
+  POKE(0xD016,0xC9);
+
+  POKE(0xD058,80);
+  POKE(0xD059,80>>8);
+  // Draw 80 chars per row
+  POKE(0xD05E,80);
+  // Put 4000 byte screen at $B000
+  POKE(0xD060,0x00);
+  POKE(0xD061,0xB0);
+  POKE(0xD062,0x00);
+
+  lfill(0xB000,0x20,2000);
+
+  // Yellow colour in palette
+  POKE(0xD10F,0x0f);
+  POKE(0xD20F,0x0f);
+  POKE(0xD30F,0x00);
+}
+
+
 void graphics_mode(void)
 {
 
@@ -24,6 +53,13 @@ void graphics_mode(void)
   lfill(0x48000,0x00,0x8000);
   lfill(0x50000,0x00,0x8000);
   lfill(0x58000,0x00,0x8000);
+
+  // Set up grey-scale palette
+  for(i=0;i<256;i++) {
+    POKE(0xD100+i,(i>>4)+((i&7)<<4));
+    POKE(0xD200+i,(i>>4)+((i&7)<<4));
+    POKE(0xD300+i,(i>>4)+((i&7)<<4));
+  }  
   
   // 16-bit text mode, full-colour text for high chars
   POKE(0xD054,0x05);
@@ -77,6 +113,24 @@ void plot_pixel(unsigned long x,unsigned char y,unsigned char colour)
 
 }
 
+uint8_t char_code;
+
+void print_text80(unsigned char x,unsigned char y,unsigned char colour,char *msg)
+{
+  pixel_addr=0xB000+x+y*80;
+  while(*msg) {
+    char_code=*msg;
+    if (*msg>=0xc0&&*msg<=0xe0) char_code=*msg-0x80;
+    else if (*msg>=0x40&&*msg<=0x60) char_code=*msg-0x40;
+    else if (*msg>=0x60&&*msg<=0x7A) char_code=*msg-0x20;
+    POKE(pixel_addr+0,char_code);
+    lpoke(0xff80000L-0xB000+pixel_addr,colour);
+    msg++;
+    pixel_addr+=1;
+  }
+}
+
+
 void main(void)
 {
   char dma_draw=1;
@@ -99,13 +153,6 @@ void main(void)
 
   graphics_mode();
 
-  // Set up grey-scale palette
-  for(i=0;i<256;i++) {
-    POKE(0xD100+i,(i>>4)+((i&7)<<4));
-    POKE(0xD200+i,(i>>4)+((i&7)<<4));
-    POKE(0xD300+i,(i>>4)+((i&7)<<4));
-  }
-
   setup_sky();
   setup_multiplier();
   
@@ -126,10 +173,14 @@ void main(void)
       
       if (PEEK(0xD610)) {
 	switch(PEEK(0xD610)) {
-	case 0x31: i-=10; break;
-	case 0x32: i+=10; break;
+	case 0x31: i-=1; break;
+	case 0x32: i+=1; break;
 	case 0xF1: dma_draw^=1; break;
 	  // Rotate left/right
+	case 0xF3: diag_mode^=1;
+	  if (diag_mode) text80_mode();
+	  else graphics_mode();
+	  break;
 	case 0x1d: case 0x44: case 0x64: i+=0x100; i&=0x3ff; break;
 	case 0x9d: case 0x41: case 0x61: i-=0x100; i&=0x3ff; break;
 
