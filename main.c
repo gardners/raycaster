@@ -19,6 +19,7 @@ void setup_sky(void);
 void setup_multiplier(void);
 uint16_t MulCos(uint16_t angle,uint16_t magnitude);
 uint16_t MulSin(uint16_t angle,uint16_t magnitude);
+char IsWall(uint8_t tileX, uint8_t tileY);
 
 unsigned short i,j;
 unsigned char a,b,c,d;
@@ -198,6 +199,11 @@ void main(void)
 	  py-=MulCos(i,STEP);	    
 	  px-=MulSin(i,STEP);
 
+	  if (IsWall(px>>8,py>>8)) {
+	    py+=MulCos(i,STEP);	    
+	    px+=MulSin(i,STEP);
+	  }
+	  
 	  break;
 	case 0x91: case 0x57: case 0x77:
 
@@ -208,6 +214,11 @@ void main(void)
 	  
 	  py+=MulCos(i,STEP);	    
 	  px+=MulSin(i,STEP);
+
+	  if (IsWall(px>>8,py>>8)) {
+	    py-=MulCos(i,STEP);	    
+	    px-=MulSin(i,STEP);
+	  }
 	  
 	  break;
 	}

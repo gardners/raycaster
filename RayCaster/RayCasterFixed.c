@@ -387,6 +387,8 @@ void Trace(
         }
     if (distance>8000) distance=8000;
     if (distance<0) distance=8000;
+    // XXX - Use hardware division unit to remove this lookup table and the
+    // distortions it causes when you get too close to a wall
     if(distance >= MIN_DIST)
     {
         *textureY = 0;
@@ -451,6 +453,9 @@ void TraceFrame(uint16_t playerX, uint16_t playerY, uint16_t playerDirection)
         ws = HORIZON_HEIGHT - sso;
         if(ws < 0)
         {
+	  // Texture piece is too tall, so clip it.
+	  // But we also need to centre it
+	  
             ws  = 0;
             sso = HORIZON_HEIGHT;
         }
@@ -546,6 +551,7 @@ void setup_sky(void)
 
 unsigned long x_offset;
 uint16_t sso2;
+unsigned char texture_y_offset;
 
 void TraceFrameFast(uint16_t playerX, uint16_t playerY, uint16_t playerDirection)
 {
@@ -565,7 +571,17 @@ void TraceFrameFast(uint16_t playerX, uint16_t playerY, uint16_t playerDirection
       POKE(0xD020,0x80);
         Trace(x, &sso, &tn, &tc, &tso, &tst);
 
-	if (sso>2*HORIZON_HEIGHT) sso=2*HORIZON_HEIGHT;
+	//	if (sso>2*HORIZON_HEIGHT) sso=2*HORIZON_HEIGHT;
+
+	if (sso>HORIZON_HEIGHT) {
+	  // XXX - Use hardware division unit to speed it up
+	  texture_y_offset=32-32*HORIZON_HEIGHT/sso;
+	  //	  snprintf(msg,80,"x=%d, sso=%d, texture_y_offset=%d, horizonheight=%d\r\n",
+	  //		   x,sso,texture_y_offset,HORIZON_HEIGHT);
+	  //	  debug_msg(msg);
+	  sso=HORIZON_HEIGHT;
+	} else
+	  texture_y_offset=0;
 	
         tx = (tc >> 2);
         ws = HORIZON_HEIGHT - sso;
@@ -593,7 +609,7 @@ void TraceFrameFast(uint16_t playerX, uint16_t playerY, uint16_t playerDirection
 	// Use DMA to copy texture.
       // XXX Textures are sideways in RAM compared with how we can get the DMA to step through them
       // A truly optimised version would fix this.
-	dma_stepped_copy(g_texture8+(tx<<6),x_offset+(ws<<3),
+	dma_stepped_copy(g_texture8+(tx<<6)+texture_y_offset,x_offset+(ws<<3),
 			 sso2,
 			 0+(ts>>10),ts>>2,
 			 0x08,0x00);
