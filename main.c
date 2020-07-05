@@ -6,9 +6,12 @@
 #include <memory.h>
 #include <dirent.h>
 #include <fileio.h>
+#include <debug.h>
 
-void TraceFrame(unsigned char playerX, unsigned char playerY, uint16_t playerDirection);
-void TraceFrameFast(unsigned char playerX, unsigned char playerY, uint16_t playerDirection);
+#define STEP 256
+
+void TraceFrame(uint16_t playerX, uint16_t playerY, uint16_t playerDirection);
+void TraceFrameFast(uint16_t playerX, uint16_t playerY, uint16_t playerDirection);
 void setup_sky(void);
 void setup_multiplier(void);
 
@@ -130,13 +133,14 @@ void print_text80(unsigned char x,unsigned char y,unsigned char colour,char *msg
   }
 }
 
+char m[80+1];
 
 void main(void)
 {
   char dma_draw=1;
-    int i;
-    uint8_t px=5;
-    uint8_t py=5;
+  int i;
+  uint16_t px=5<<8;
+  uint16_t py=5<<8;
 
     asm ( "sei" );
 
@@ -159,10 +163,10 @@ void main(void)
   i=0;
   while(1)
     {
-      if (px<1) px=1;
-      if (py<1) py=1;
-      if (px>30) px=30;
-      if (py>30) py=30;
+      if (px<(1<<8)) px=1<<8;
+      if (py<(1<<8)) py=1<<8;
+      if (px>(30<<8)) px=30<<8;
+      if (py>(30<<8)) py=30<<8;
 
       if (dma_draw)
 	TraceFrameFast(px,py,i);
@@ -172,6 +176,8 @@ void main(void)
       i&=0x3FF;
       
       if (PEEK(0xD610)) {
+	snprintf(m,80,"key $%02x pressed.\n",PEEK(0xD610));
+	debug_msg(m);
 	switch(PEEK(0xD610)) {
 	case 0x31: i-=1; break;
 	case 0x32: i+=1; break;
@@ -187,19 +193,19 @@ void main(void)
 	  // Move forewards/backwards
 	case 0x11: case 0x53: case 0x73:
 	  switch(i) {
-	  case 0: py--; break;
-	  case 0x100: px--; break;
-	  case 0x200: py++; break;
-	  case 0x300: px++; break;
+	  case 0: py-=STEP; break;
+	  case 0x100: px-=STEP; break;
+	  case 0x200: py+=STEP; break;
+	  case 0x300: px+=STEP; break;
 	  }
 	  break;
 	case 0x91: case 0x57: case 0x77:
 	  POKE(0xD020,PEEK(0xD012));
 	  switch(i) {
-	  case 0: py++; break;
-	  case 0x100: px++; break;
-	  case 0x200: py--; break;
-	  case 0x300: px--; break;
+	  case 0: py+=STEP; break;
+	  case 0x100: px+=STEP; break;
+	  case 0x200: py-=STEP; break;
+	  case 0x300: px-=STEP; break;
 	  }
 	  break;
 	}

@@ -347,7 +347,7 @@ void Trace(
 
 
     if (diag_mode&&(screenX<(25*8))) {
-	snprintf(msg,80,"(%d,%d)%d          ",
+	snprintf(msg,80,"(%d,%d)%ld          ",
 		 _playerX>>8,_playerY>>8,distance);
 	msg[10]=0;
 	print_text80((screenX&7)*10,(screenX>>3),15,msg);
@@ -373,9 +373,9 @@ uint32_t* lb;
 int16_t tx,ws,ty,tv;
 int x,y;
 
-void TraceFrame(unsigned char playerX, unsigned char playerY, uint16_t playerDirection)
+void TraceFrame(uint16_t playerX, uint16_t playerY, uint16_t playerDirection)
 {
-    Start(playerX<<8, playerY<<8, playerDirection);
+    Start(playerX, playerY, playerDirection);
 
     for(x = 0; x < SCREEN_WIDTH; x++)
     {
@@ -482,9 +482,9 @@ void setup_sky(void)
 unsigned long x_offset;
 uint16_t sso2;
 
-void TraceFrameFast(unsigned char playerX, unsigned char playerY, uint16_t playerDirection)
+void TraceFrameFast(uint16_t playerX, uint16_t playerY, uint16_t playerDirection)
 {
-    Start(playerX<<8, playerY<<8, playerDirection);
+    Start(playerX, playerY, playerDirection);
 
 
     x_offset=0x40000;
