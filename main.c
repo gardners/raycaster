@@ -168,13 +168,6 @@ void main(void)
       if (px>(30<<8)) px=30<<8;
       if (py>(30<<8)) py=30<<8;
 
-      if (dma_draw)
-	TraceFrameFast(px,py,i);
-      else
-	TraceFrame(px,py,i);
-
-      i&=0x3FF;
-      
       if (PEEK(0xD610)) {
 	snprintf(m,80,"key $%02x pressed.\n",PEEK(0xD610));
 	debug_msg(m);
@@ -211,8 +204,15 @@ void main(void)
 	}
 	POKE(0xD610,0);
       }
+
+      i&=0x3FF;      
+
+      if (dma_draw)
+	TraceFrameFast(px,py,i);
+      else
+	TraceFrame(px,py,i);
       
-      //      i++; i&=0x3ff;
-      POKE(0xD020,PEEK(0xD012)&0x0f);
+      // XXX wait for key between frames
+      while(!PEEK(0xD610)) continue;
     }
 }
