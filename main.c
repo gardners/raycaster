@@ -8,13 +8,17 @@
 #include <fileio.h>
 #include <debug.h>
 
-#define STEP 256
+// 256 = one whole square
+#define STEP 64
+// 0x100 = 90 degrees at a time
+#define ROTATE_STEP (0x100>>2)
 
 void TraceFrame(uint16_t playerX, uint16_t playerY, uint16_t playerDirection);
 void TraceFrameFast(uint16_t playerX, uint16_t playerY, uint16_t playerDirection);
 void setup_sky(void);
 void setup_multiplier(void);
-
+uint16_t MulCos(uint16_t angle,uint16_t magnitude);
+uint16_t MulSin(uint16_t angle,uint16_t magnitude);
 
 unsigned short i,j;
 unsigned char a,b,c,d;
@@ -180,26 +184,31 @@ void main(void)
 	  if (diag_mode) text80_mode();
 	  else graphics_mode();
 	  break;
-	case 0x1d: case 0x44: case 0x64: i+=0x100; i&=0x3ff; break;
-	case 0x9d: case 0x41: case 0x61: i-=0x100; i&=0x3ff; break;
+	case 0x1d: case 0x44: case 0x64: i+=ROTATE_STEP; i&=0x3ff; break;
+	case 0x9d: case 0x41: case 0x61: i-=ROTATE_STEP; i&=0x3ff; break;
 
 	  // Move forewards/backwards
 	case 0x11: case 0x53: case 0x73:
-	  switch(i) {
-	  case 0: py-=STEP; break;
-	  case 0x100: px-=STEP; break;
-	  case 0x200: py+=STEP; break;
-	  case 0x300: px+=STEP; break;
-	  }
+
+	  snprintf(m,80,"mulcos($%04x,$%04x) = $%04x, mulsin($%04x,$%04x) = $%04x\n",
+		   i,STEP,MulCos(i,STEP),
+		   i,STEP,MulSin(i,STEP));
+	  debug_msg(m);
+	  
+	  py-=MulCos(i,STEP);	    
+	  px-=MulSin(i,STEP);
+
 	  break;
 	case 0x91: case 0x57: case 0x77:
-	  POKE(0xD020,PEEK(0xD012));
-	  switch(i) {
-	  case 0: py+=STEP; break;
-	  case 0x100: px+=STEP; break;
-	  case 0x200: py-=STEP; break;
-	  case 0x300: px-=STEP; break;
-	  }
+
+	  snprintf(m,80,"mulcos($%04x,$%04x) = $%04x, mulsin($%04x,$%04x) = $%04x\n",
+		   i,STEP,MulCos(i,STEP),
+		   i,STEP,MulSin(i,STEP));
+	  debug_msg(m);
+	  
+	  py+=MulCos(i,STEP);	    
+	  px+=MulSin(i,STEP);
+	  
 	  break;
 	}
 	POKE(0xD610,0);

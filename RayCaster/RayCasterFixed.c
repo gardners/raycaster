@@ -52,6 +52,56 @@ int16_t MulS(uint8_t v, int16_t f)
     return uf;
 }
 
+uint16_t MulCos(uint16_t angle,uint16_t magnitude)
+{
+  switch(angle) {
+  case 0: return magnitude;
+  case 0x100: return 0;
+  case 0x200: return -magnitude;
+  case 0x300: return 0;
+  }
+  
+  switch(angle>>8)
+    {
+    case 0:	  
+      return MulU(LOOKUP8(g_cos, (angle&0xff)), magnitude);
+    case 1:
+      return -MulU(LOOKUP8(g_sin, (angle&0xff)), magnitude);
+    case 2:
+      return -MulU(LOOKUP8(g_cos, (angle&0xff)), magnitude);
+    case 3:
+      return MulU(LOOKUP8(g_sin, (angle&0xff)), magnitude);
+      break;
+    }
+
+  return 0;
+}
+
+uint16_t MulSin(uint16_t angle,uint16_t magnitude)
+{
+  switch(angle) {
+  case 0: return 0;
+  case 0x100: return magnitude;
+  case 0x200: return 0;
+  case 0x300: return -magnitude;
+  }
+
+  switch(angle>>8)
+    {
+    case 0:	  
+      return MulU(LOOKUP8(g_sin, (angle&0xff)), magnitude);
+    case 1:
+      return MulU(LOOKUP8(g_cos, (angle&0xff)), magnitude);
+    case 2:
+      return -MulU(LOOKUP8(g_sin, (angle&0xff)), magnitude);
+    case 3:
+      return -MulU(LOOKUP8(g_cos, (angle&0xff)), magnitude);
+      break;
+    }
+
+  return 0;
+}
+
 int16_t MulTan(uint8_t value, char inverse, uint8_t quarter, uint8_t angle, const uint16_t* lookupTable)
 {
     uint8_t signedValue = value;
