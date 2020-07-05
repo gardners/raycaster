@@ -132,7 +132,7 @@ int16_t AbsTan(uint8_t quarter, uint8_t angle, const uint16_t* lookupTable)
 {
     if(quarter & 1)
     {
-        return LOOKUP16(lookupTable, INVERT(angle));
+      return LOOKUP16(lookupTable, INVERT(angle));
     }
     return LOOKUP16(lookupTable, angle);
 }
@@ -170,24 +170,39 @@ int16_t stepX;
 int16_t stepY;
 
 
+int8_t  tileStepX;
+int8_t  tileStepY;
+int16_t interceptX;
+int16_t interceptY;
+
+uint8_t quarter;
+uint8_t angle;
+uint8_t offsetX;
+uint8_t offsetY;
+
+// tileX/Y and interceptX/Y both have to be signed for the ray casting comparisons
+// to work correctly
+int8_t tileX;
+int8_t tileY;
+int16_t hitX;
+int16_t hitY;
+
 void CalculateDistance(
     uint16_t rayX, uint16_t rayY, uint16_t rayA, int16_t* deltaX, int16_t* deltaY, uint8_t* textureNo, uint8_t* textureX)
 {
-    register int8_t  tileStepX;
-    register int8_t  tileStepY;
-    register int16_t interceptX = rayX;
-    register int16_t interceptY = rayY;
+  interceptX = rayX;
+  interceptY = rayY;
 
-    const uint8_t quarter = rayA >> 8;
-    const uint8_t angle   = rayA & 0xff;
-    const uint8_t offsetX = rayX & 0xff;
-    const uint8_t offsetY = rayY & 0xff;
+  quarter = rayA >> 8;
+  angle   = rayA & 0xff;
+  offsetX = rayX & 0xff;
+  offsetY = rayY & 0xff;
 
-    uint8_t tileX = rayX >> 8;
-    uint8_t tileY = rayY >> 8;
-    int16_t hitX;
-    int16_t hitY;
-
+    // tileX/Y and interceptX/Y both have to be signed for the ray casting comparisons
+    // to work correctly
+  tileX = rayX >> 8;
+  tileY = rayY >> 8;
+    
     if(angle == 0)
     {
         switch(quarter & 1)
@@ -240,7 +255,7 @@ void CalculateDistance(
         case 2:
         case 3:
             tileStepX = -1;
-            interceptY -= MulTan(offsetX, false, quarter, angle, g_cotan);
+	    interceptY -= MulTan(offsetX, false, quarter, angle, g_cotan);
             stepX = -AbsTan(quarter, angle, g_tan);
             break;
         }
@@ -264,7 +279,7 @@ void CalculateDistance(
 
         for(;;)
         {
-            while((tileStepY == 1 && (interceptY >> 8 < tileY)) || (tileStepY == -1 && (interceptY >> 8 >= tileY)))
+	  while((tileStepY == 1 && ((interceptY >> 8) < tileY)) || (tileStepY == -1 && ((interceptY >> 8) >= tileY)))
             {
                 tileX += tileStepX;
                 if(IsWall(tileX, tileY))
@@ -320,6 +335,7 @@ void Trace(
     distance=0;
     
     // neutralize artefacts around edges
+    if (0)
     switch(rayAngle & 0xff)
     {
     case 1:
@@ -351,13 +367,13 @@ void Trace(
             distance += MulS(LOOKUP8(g_cos, _viewAngle), deltaY);
             break;
         case 1:
-            distance -= MulS(LOOKUP8(g_cos, INVERT(_viewAngle)), deltaY);
+            distance -= MulS(LOOKUP8(g_sin, _viewAngle), deltaY);
             break;
         case 2:
             distance -= MulS(LOOKUP8(g_cos, _viewAngle), deltaY);
             break;
         case 3:
-            distance += MulS(LOOKUP8(g_cos, INVERT(_viewAngle)), deltaY);
+            distance += MulS(LOOKUP8(g_sin, _viewAngle), deltaY);
             break;
         }
 
@@ -376,13 +392,13 @@ void Trace(
             distance += MulS(LOOKUP8(g_sin, _viewAngle), deltaX);
             break;
         case 1:
-            distance += MulS(LOOKUP8(g_sin, INVERT(_viewAngle)), deltaX);
+            distance += MulS(LOOKUP8(g_cos, _viewAngle), deltaX);
             break;
         case 2:
             distance -= MulS(LOOKUP8(g_sin, _viewAngle), deltaX);
             break;
         case 3:
-            distance -= MulS(LOOKUP8(g_sin, INVERT(_viewAngle)), deltaX);
+            distance -= MulS(LOOKUP8(g_cos, _viewAngle), deltaX);
             break;
         }
     if (distance>8000) distance=8000;
@@ -408,7 +424,7 @@ void Trace(
 	msg[10]=0;
 	print_text80((screenX&7)*10,(screenX>>3),15,msg);
       }     
-    
+
 }
 
 void Start(uint16_t playerX, uint16_t playerY, int16_t playerA)
@@ -428,7 +444,7 @@ void Start(uint16_t playerX, uint16_t playerY, int16_t playerA)
     POKE(0xD775,0);
     POKE(0xD776,0);
     POKE(0xD777,0);
-    
+
 }
 
 uint8_t   sso;
@@ -576,9 +592,6 @@ void TraceFrameFast(uint16_t playerX, uint16_t playerY, uint16_t playerDirection
 	if (sso>HORIZON_HEIGHT) {
 	  // XXX - Use hardware division unit to speed it up
 	  texture_y_offset=32-32*HORIZON_HEIGHT/sso;
-	  //	  snprintf(msg,80,"x=%d, sso=%d, texture_y_offset=%d, horizonheight=%d\r\n",
-	  //		   x,sso,texture_y_offset,HORIZON_HEIGHT);
-	  //	  debug_msg(msg);
 	  sso=HORIZON_HEIGHT;
 	} else
 	  texture_y_offset=0;
