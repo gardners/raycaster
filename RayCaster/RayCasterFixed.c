@@ -6,6 +6,8 @@
 #define LOOKUP_STORAGE extern
 #include "RayCasterTables.h"
 
+#include "debug.h"
+
 #define true 1
 #define false 0
 
@@ -14,6 +16,8 @@ uint16_t _playerY;
 int16_t  _playerA;
 uint8_t  _viewQuarter;
 uint8_t  _viewAngle;
+
+char msg[160+1];
 
 extern char diag_mode;
 
@@ -35,7 +39,7 @@ uint16_t MulU(uint8_t v, uint16_t f)
 	POKE(0xD770,v);
 	POKE(0xD774,f & 0xff);
 	POKE(0xD775,f>>8);
-        return PEEK(0xD778)+(PEEK(0xD779)<<8);
+        return PEEK(0xD779)+(PEEK(0xD77A)<<8);
 }
 
 int16_t MulS(uint8_t v, int16_t f)
@@ -112,6 +116,10 @@ void LookupHeight(uint16_t distance, uint8_t* height, uint16_t* step)
     }
 }
 
+int16_t stepX;
+int16_t stepY;
+
+
 void CalculateDistance(
     uint16_t rayX, uint16_t rayY, uint16_t rayA, int16_t* deltaX, int16_t* deltaY, uint8_t* textureNo, uint8_t* textureX)
 {
@@ -170,9 +178,6 @@ void CalculateDistance(
     }
     else
     {
-        int16_t stepX;
-        int16_t stepY;
-
         switch(quarter)
         {
         case 0:
@@ -247,9 +252,8 @@ VerticalHit:
 WallHit:
     *deltaX = hitX - rayX;
     *deltaY = hitY - rayY;
-}
 
-char msg[80+1];
+}
 
 // (playerX, playerY) is 8 box coordinate bits, 8 inside coordinate bits
 // (playerA) is full circle as 1024
@@ -293,7 +297,7 @@ void Trace(
     else
         switch(_viewQuarter)
         {
-        case 0:
+        case 0:	  
             distance += MulS(LOOKUP8(g_cos, _viewAngle), deltaY);
             break;
         case 1:
@@ -362,6 +366,17 @@ void Start(uint16_t playerX, uint16_t playerY, int16_t playerA)
     _playerX     = playerX;
     _playerY     = playerY;
     _playerA     = playerA;
+
+    // And clear multiplier state
+    POKE(0xD770,0);
+    POKE(0xD771,0);
+    POKE(0xD772,0);
+    POKE(0xD773,0);
+    POKE(0xD774,0);
+    POKE(0xD775,0);
+    POKE(0xD776,0);
+    POKE(0xD777,0);
+    
 }
 
 uint8_t   sso;
