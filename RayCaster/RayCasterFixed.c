@@ -595,7 +595,7 @@ void TraceFrameFast(uint16_t playerX, uint16_t playerY, uint16_t playerDirection
 	else x_offset+=64*25-7;
       }
 
-      POKE(0xD020,0x80);
+      //      POKE(0xD020,0x80);
         Trace(x, &sso, &tn, &tc, &tso, &tst);
 
 	//	if (sso>2*HORIZON_HEIGHT) sso=2*HORIZON_HEIGHT;
@@ -619,7 +619,7 @@ void TraceFrameFast(uint16_t playerX, uint16_t playerY, uint16_t playerDirection
 
 	sso2=sso<<1;
 	
-      POKE(0xD020,0x00);
+	//      POKE(0xD020,0x00);
       
 	// Plot upper horizon part of the image
 	// Use a DMA job with stepped destination
@@ -628,7 +628,7 @@ void TraceFrameFast(uint16_t playerX, uint16_t playerY, uint16_t playerDirection
 		       0x01,0x00,
 		       0x08,0x00);
 
-      POKE(0xD020,0x00);
+      //      POKE(0xD020,0x00);
 	
 	// Use DMA to copy texture.
       // XXX Textures are sideways in RAM compared with how we can get the DMA to step through them
@@ -638,7 +638,7 @@ void TraceFrameFast(uint16_t playerX, uint16_t playerY, uint16_t playerDirection
 			 0+(ts>>10),ts>>2,
 			 0x08,0x00);
 
-      POKE(0xD020,0x00);
+	//      POKE(0xD020,0x00);
 	
 	// Use DMA job with stepped destination to draw floor
 	dma_stepped_copy(sky_texture+(ws+sso*2),x_offset+((ws+sso2)<<3),
@@ -646,7 +646,7 @@ void TraceFrameFast(uint16_t playerX, uint16_t playerY, uint16_t playerDirection
 			 0x01,0x00,
 			 0x08,0x00);
 	
-      POKE(0xD020,0x00);
+	//      POKE(0xD020,0x00);
 
     }
 }

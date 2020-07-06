@@ -153,6 +153,16 @@ uint8_t back_held=0;
 uint8_t right_held=0;
 uint8_t left_held=0;
 
+void mapsprite_set_pixel(uint8_t x,uint8_t y)
+{
+  if (x>63) return;
+  pixel_addr=0x400+(x>>3)+(y<<3);
+  if (pixel_addr>0x5ff) return;
+#if 1
+  POKE(pixel_addr,PEEK(pixel_addr)|(1<<(7-(x&7))));
+#endif
+}
+
 void main(void)
 {
   char dma_draw=1;
@@ -192,9 +202,44 @@ void main(void)
   if (!IsWall(1,2)) i=0x000;
   else i=0x100;
 
+  // Set up sprite for showing map discovery
+  // It sits in the upper right of the screen
+  POKE(0xD015,0x80);
+  POKE(0xD00E,0x18);
+  POKE(0xD00F,0x32);
+  POKE(0xD010,0x80);
+  // Make sprite a bit-plane modifier, so it kind of ghosts over the
+  // background. this is also why we use sprite 7, so that it modifies
+  // bit 7 of the underlying colour
+  POKE(0xD04B,PEEK(0xD04B)|0x80);
+  // Make spriet 64px wide and 64px high
+  POKE(0xD057,0x80);
+  POKE(0xD056,64); // extended height sprites are 64 px tall
+  POKE(0xD055,0x80); // and make our sprite so.
+  // Now set sprite pointer list to somewhere we can modify, so that we can put the sprite data somewhere
+  // useful, since it will be 64x64 = 4kbit = 512 bytes.
+  // Well, we aren't using the screen, so we can just put it there.
+  POKE(0x07FF,0x400/0x40);
+  // And erase it
+  lfill(0x400,0x00,512);
   
   while(1)
     {
+      // Update map sprite based on where we are
+      if (px<0x100) a=0; else a=(px>>8);
+      if (py<0x100) b=0; else b=(py>>8);
+      if (!IsWall(a,b)) mapsprite_set_pixel(a,b);
+#if 0
+      if (IsWall(a-1,b-1)) mapsprite_set_pixel(a-1,b-1);
+      if (IsWall(a-1,b)) mapsprite_set_pixel(a-1,b);
+      if (IsWall(a-1,b+1)) mapsprite_set_pixel(a-1,b+1);
+      if (IsWall(a,b-1)) mapsprite_set_pixel(a-1,b-1);
+      if (IsWall(a,b+1)) mapsprite_set_pixel(a,b+1);
+      if (IsWall(a+1,b-1)) mapsprite_set_pixel(a+1,b-1);
+      if (IsWall(a+1,b)) mapsprite_set_pixel(a+1,b);
+      if (IsWall(a+1,b+1)) mapsprite_set_pixel(a+1,b+1);
+#endif
+      
       POKE(0xD614,0x01);
       forward_held=(~PEEK(0xD613))&0x02; // W
       left_held=(~PEEK(0xD613))&0x04; // A 
