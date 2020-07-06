@@ -11,7 +11,7 @@
 
 // These are the step per jiffy. Multiply by 10 for movement per second
 // 256 = one whole square
-#define STEP 24
+#define STEP 48
 #define ROTATE_STEP 18
 
 void TraceFrame(uint16_t playerX, uint16_t playerY, uint16_t playerDirection);
@@ -156,7 +156,7 @@ uint8_t left_held=0;
 void mapsprite_set_pixel(uint8_t x,uint8_t y)
 {
   if (x>63) return;
-  pixel_addr=0x400+(x>>3)+(y<<3);
+  pixel_addr=0x400+(x>>3)+((63-y)<<3);
   if (pixel_addr>0x5ff) return;
 #if 1
   POKE(pixel_addr,PEEK(pixel_addr)|(1<<(7-(x&7))));
@@ -204,24 +204,33 @@ void main(void)
 
   // Set up sprite for showing map discovery
   // It sits in the upper right of the screen
-  POKE(0xD015,0x80);
+  POKE(0xD015,0x91);
   POKE(0xD00E,0x18);
   POKE(0xD00F,0x32);
-  POKE(0xD010,0x80);
+  POKE(0xD008,0x18);
+  POKE(0xD009,0x32);
+  POKE(0xD010,0x91);
   // Make sprite a bit-plane modifier, so it kind of ghosts over the
   // background. this is also why we use sprite 7, so that it modifies
   // bit 7 of the underlying colour
-  POKE(0xD04B,PEEK(0xD04B)|0x80);
+  POKE(0xD04B,PEEK(0xD04B)|0x90);
   // Make spriet 64px wide and 64px high
-  POKE(0xD057,0x80);
-  POKE(0xD056,64); // extended height sprites are 64 px tall
-  POKE(0xD055,0x80); // and make our sprite so.
+  POKE(0xD057,0x90);
+  POKE(0xD056,63); // extended height sprites are 63 px tall
+  POKE(0xD055,0x90); // and make our sprite so.
   // Now set sprite pointer list to somewhere we can modify, so that we can put the sprite data somewhere
   // useful, since it will be 64x64 = 4kbit = 512 bytes.
   // Well, we aren't using the screen, so we can just put it there.
   POKE(0x07FF,0x400/0x40);
+  POKE(0x07FC,0x600/0x40);
   // And erase it
   lfill(0x400,0x00,512);
+  lfill(0x600,0xFF,512-8);
+
+  // Make single pixel sprite for showing our location
+  lfill(0x380,0x00,63);
+  POKE(0x380,0x80);
+  POKE(0x07F8,0x0380/0x40);
   
   while(1)
     {
@@ -229,16 +238,11 @@ void main(void)
       if (px<0x100) a=0; else a=(px>>8);
       if (py<0x100) b=0; else b=(py>>8);
       if (!IsWall(a,b)) mapsprite_set_pixel(a,b);
-#if 0
-      if (IsWall(a-1,b-1)) mapsprite_set_pixel(a-1,b-1);
-      if (IsWall(a-1,b)) mapsprite_set_pixel(a-1,b);
-      if (IsWall(a-1,b+1)) mapsprite_set_pixel(a-1,b+1);
-      if (IsWall(a,b-1)) mapsprite_set_pixel(a-1,b-1);
-      if (IsWall(a,b+1)) mapsprite_set_pixel(a,b+1);
-      if (IsWall(a+1,b-1)) mapsprite_set_pixel(a+1,b-1);
-      if (IsWall(a+1,b)) mapsprite_set_pixel(a+1,b);
-      if (IsWall(a+1,b+1)) mapsprite_set_pixel(a+1,b+1);
-#endif
+
+      // And set our pulsing location sprite in the right place
+      POKE(0xD000,0x18+a); POKE(0xD001,0x32+63-b);
+      POKE(0xD027,PEEK(0xD027)^0x80);
+
       
       POKE(0xD614,0x01);
       forward_held=(~PEEK(0xD613))&0x02; // W
