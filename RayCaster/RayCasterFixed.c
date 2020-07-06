@@ -602,7 +602,7 @@ void TraceFrameFast(uint16_t playerX, uint16_t playerY, uint16_t playerDirection
 
       if (texture_num>=NUM_TEXTURES) texture_num=0;
       texture_offset=texture_num<<12;
-      texture_offset=5<<12;
+      texture_offset=9<<12;
       
 	//	if (sso>2*HORIZON_HEIGHT) sso=2*HORIZON_HEIGHT;
 
@@ -633,7 +633,7 @@ void TraceFrameFast(uint16_t playerX, uint16_t playerY, uint16_t playerDirection
 	// to match the view angle. It looks nice and helps the player know where they are
 	// pointed
 	dma_stepped_copy(TEXTURE_ADDRESS
-			 +(rayAngle*320/1024)*64
+			 +(320*(rayAngle^0x200)/1024)*64
 			 ,x_offset,
 		       ws,
 		       0x00,0xa0,
@@ -652,9 +652,14 @@ void TraceFrameFast(uint16_t playerX, uint16_t playerY, uint16_t playerDirection
 	//      POKE(0xD020,0x00);
 	
 	// Use DMA job with stepped destination to draw floor
-	dma_stepped_copy(TEXTURE_ADDRESS+(ws+sso*2),x_offset+((ws+sso2)<<3),
+	dma_stepped_copy(TEXTURE_ADDRESS+(5*4096)
+			 // Make the texture follow along a bit
+			 +64-(((playerX+playerY)>>4)&0x3f)
+			 // And rotate around with you
+			 +((rayAngle>>1)&0x7f)*64
+			 +(ws+sso*2),x_offset+((ws+sso2)<<3),
 			 ws,
-			 0x01,0x00,
+			 0x00,0xa0,
 			 0x08,0x00);
 	
 	//      POKE(0xD020,0x00);
