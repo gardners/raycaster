@@ -94,8 +94,8 @@ raycaster.prg:       $(RAYCASTERSRCS) $(RAYCASTERHDRS)
 pngtotextures:	pngtotextures.c Makefile
 	$(CC) $(COPT) -I/usr/local/include -L/usr/local/lib -o pngtotextures pngtotextures.c -lpng
 
-textures.c:	pngtotextures assets/*.png
-	./pngtotextures assets/*.png > textures.c
+textures.c:	pngtotextures assets/0*.png Makefile
+	./pngtotextures assets/0*.png > textures.c
 
 /usr/bin/convert: 
 	echo "Could not find the program 'convert'. Try the following:"

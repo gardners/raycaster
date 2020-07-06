@@ -64,10 +64,8 @@ void graphics_mode(void)
 {
 
   // Clear screen RAM first, so that there is no visible glitching
-  lfill(0x40000,0x00,0x8000);
-  lfill(0x48000,0x00,0x8000);
-  lfill(0x50000,0x00,0x8000);
-  lfill(0x58000,0x00,0x8000);
+  lfill(0x40000L,0x00,0x8000);
+  lfill(0x48000L,0x00,0x8000);
 
   // Set up palette from texture data
   lcopy(&colours[0x010],0xffd3110L,0xf0);
@@ -92,18 +90,18 @@ void graphics_mode(void)
   POKE(0xD059,160>>8);
   // Draw 80 chars per row
   POKE(0xD05E,80);
-  // Put 4000 byte screen at $C000
+  // Put 4000 byte screen at $12000
   POKE(0xD060,0x00);
-  POKE(0xD061,0xc0);
-  POKE(0xD062,0x00);
+  POKE(0xD061,0x20);
+  POKE(0xD062,0x01);
 
   // Layout screen so that graphics data comes from $40000 -- $5FFFF
 
   i=0x40000/0x40;
   for(a=0;a<80;a++)
     for(b=0;b<25;b++) {
-      POKE(0xC000+b*160+a*2+0,i&0xff);
-      POKE(0xC000+b*160+a*2+1,i>>8);
+      lpoke(0x12000L+b*160+a*2+0,i&0xff);
+      lpoke(0x12000L+b*160+a*2+1,i>>8);
 
       i++;
     }
@@ -143,8 +141,6 @@ void print_text80(unsigned char x,unsigned char y,unsigned char colour,char *msg
   }
 }
 
-char m[80+1];
-
 uint16_t last_frame_start=0;
 uint16_t last_frame_duration=0;
 
@@ -172,7 +168,6 @@ void main(void)
 
     asm ( "sei" );
 
-    
   // Fast CPU, M65 IO
   POKE(0,65);
   POKE(0xD02F,0x47);
@@ -213,7 +208,7 @@ void main(void)
   // Make sprite a bit-plane modifier, so it kind of ghosts over the
   // background. this is also why we use sprite 7, so that it modifies
   // bit 7 of the underlying colour
-  POKE(0xD04B,PEEK(0xD04B)|0x90);
+  //  POKE(0xD04B,PEEK(0xD04B)|0x90);
   // Make spriet 64px wide and 64px high
   POKE(0xD057,0x90);
   POKE(0xD056,63); // extended height sprites are 63 px tall
@@ -221,19 +216,26 @@ void main(void)
   // Now set sprite pointer list to somewhere we can modify, so that we can put the sprite data somewhere
   // useful, since it will be 64x64 = 4kbit = 512 bytes.
   // Well, we aren't using the screen, so we can just put it there.
-  POKE(0x07FF,0x400/0x40);
-  POKE(0x07FC,0x600/0x40);
+  POKE(0x07FC,0x400/0x40);
+  POKE(0x07FF,0x600/0x40);
   // And erase it
   lfill(0x400,0x00,512);
   lfill(0x600,0xFF,512-8);
 
+  POKE(0xD02B,0x07);
+  POKE(0xD02E,0x09);
+
+  
   // Make single pixel sprite for showing our location
   lfill(0x380,0x00,63);
   POKE(0x380,0x80);
   POKE(0x07F8,0x0380/0x40);
+
+  //  while(1) POKE(0xD020,PEEK(0xD012));
   
   while(1)
     {
+      
       // Update map sprite based on where we are
       if (px<0x100) a=0; else a=(px>>8);
       if (py<0x100) b=0; else b=(py>>8);
@@ -265,8 +267,6 @@ void main(void)
       else right_held|=(~PEEK(0xD613))&0x04; // Cursor right
       
       if (PEEK(0xD610)) {
-	snprintf(m,80,"key $%02x pressed.\n",PEEK(0xD610));
-	debug_msg(m);
 	switch(PEEK(0xD610)) {
 	case 0x31: i-=1; break;
 	case 0x32: i+=1; break;
@@ -332,14 +332,13 @@ void main(void)
       last_frame_start=*(uint16_t *)0xDC08;
       if (dma_draw)
 	TraceFrameFast(px,py,i);
+#if 0
       else
 	TraceFrame(px,py,i);
+#endif
       last_frame_duration=(*(uint16_t *)0xDC08) - last_frame_start;
       last_frame_duration&=0xff;
       while (last_frame_duration>9) last_frame_duration+=10;
 
-      snprintf(m,80,"last frame took $%04x jiffies: %d,%d,%d,%d\n",last_frame_duration,
-	       left_held,right_held,forward_held,back_held);
-      debug_msg(m);
     }
 }

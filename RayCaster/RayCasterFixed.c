@@ -23,8 +23,6 @@ uint16_t texture_offset=0;
 uint8_t texture_num=0;
 
 
-char msg[160+1];
-
 extern char diag_mode;
 
 void print_text80(unsigned char x,unsigned char y,unsigned char colour,char *msg);
@@ -436,14 +434,14 @@ void Trace(
         *textureStep = LOOKUP16(g_overflowStep, distance);
     }
 
-
+#if 0
     if (diag_mode&&(screenX<(25*8))) {
 	snprintf(msg,80,"(%d,%d)%ld          ",
 		 _playerX>>8,_playerY>>8,distance);
 	msg[10]=0;
 	print_text80((screenX&7)*10,(screenX>>3),15,msg);
       }     
-
+#endif
 }
 
 void Start(uint16_t playerX, uint16_t playerY, int16_t playerA)
@@ -475,6 +473,7 @@ uint32_t* lb;
 int16_t tx,ws,ty,tv;
 int x,y;
 
+#if 0
 void TraceFrame(uint16_t playerX, uint16_t playerY, uint16_t playerDirection)
 {
     Start(playerX, playerY, playerDirection);
@@ -527,6 +526,7 @@ void TraceFrame(uint16_t playerX, uint16_t playerY, uint16_t playerDirection)
         }
     }
 }
+#endif
 
 uint8_t sky_texture[0x100];
 

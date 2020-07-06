@@ -156,10 +156,205 @@ unsigned char nyblswap(unsigned char in)
   return ((in&0xf)<<4)+((in&0xf0)>>4);
 }
 
-/* ============================================================= */
+/*
+  Simple RLE type packer, so that we can stash more textures in a single 64KB executable,
+  which we can then extract into a higher memory bank on loading. */
+uint8_t recent_bytes[14]={0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+uint8_t recent_copy_bytes[14]={0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
 
 uint8_t texture_data[128*1024];
 int texture_offset=0;
+uint8_t packed_data[1024*1024];
+int packed_len=0;
+uint8_t unpacked_data[1024*1024];
+int unpacked_len=0;
+
+void copy_recent_list(void)
+{
+  for(int i=0;i<14;i++) recent_copy_bytes[i]=recent_bytes[i];
+}
+
+int recent_index(uint8_t v)
+{
+  for(int i=0;i<14;i++) if (v==recent_bytes[i]) return i;
+  return 255;
+}
+int recent_copy_index(uint8_t v)
+{
+  for(int i=0;i<14;i++) if (v==recent_copy_bytes[i]) return i;
+  return 255;
+}
+
+int update_recent_bytes(uint8_t v)
+{
+  int index=recent_index(v);
+  if (index>13) index=13;
+  for(int i=index;i>=1;i--) recent_bytes[i]=recent_bytes[i-1];
+  recent_bytes[0]=v;
+}
+
+int update_copy_recent_bytes(uint8_t v)
+{
+  int index=recent_copy_index(v);
+  if (index>13) index=13;
+  for(int i=index;i>=1;i--) recent_copy_bytes[i]=recent_copy_bytes[i-1];
+  recent_copy_bytes[0]=v;
+}
+
+void unpack_textures(void)
+{
+  int ofs=0;
+
+  uint8_t value;
+  int count;
+  
+  int last_unpacked_len=0;
+  
+  // Reset recent bytes list
+  for(int i=0;i<14;i++) recent_bytes[i]=0;
+  
+  while((packed_data[ofs]!=0xe0)) {
+    if (ofs>=packed_len||unpacked_len>texture_offset) {
+      fprintf(stderr,"Error verifying decompression.\n");
+      exit(-1);
+    }
+
+    if (packed_data[ofs]==0xff) {
+      // Long RLE sequence
+      count=packed_data[++ofs];
+      value=packed_data[++ofs];
+      update_recent_bytes(value);
+      while(count--) unpacked_data[unpacked_len++]=value;
+    } else if ((packed_data[ofs]&0xf0)==0xe0) {
+      // String of non-packed bytes
+      if ((packed_data[ofs]&0x0f)==0x0f)
+	count=packed_data[++ofs];
+      else
+	count=packed_data[ofs]&0x0f;
+      while(count--) {
+	unpacked_data[unpacked_len++]=packed_data[++ofs];
+	update_recent_bytes(packed_data[ofs]);
+      }
+    } else if ((packed_data[ofs]&0xf0)==0xf0) {
+      // Short RLE sequence
+      count=packed_data[ofs]&0x0f;
+      value=packed_data[++ofs];
+      update_recent_bytes(value);
+      while(count--) unpacked_data[unpacked_len++]=value;
+    } else {
+      value=recent_bytes[packed_data[ofs]>>4];
+      update_recent_bytes(value);
+      count=recent_bytes[packed_data[ofs]]&0x0f;
+      if (count==15) {
+	while(count--) {
+	  unpacked_data[unpacked_len++]=packed_data[++ofs];
+	  update_recent_bytes(packed_data[ofs]);
+	}
+      } else {
+	// Actually a 2nd recent byte
+	value=recent_bytes[count];
+	unpacked_data[unpacked_len++]=value;
+	update_recent_bytes(value);	
+	ofs++;
+      }
+    }
+  }
+}
+
+
+void pack_textures(void)
+{
+  for(int i=0;i<14;i++) recent_bytes[i]=0;
+  for(int i=0;i<texture_offset;) {
+    int count=0;
+    int index=recent_index(texture_data[i]);
+    int index_next=recent_index(texture_data[i+1]);
+    while(texture_data[i+count]==texture_data[i]) count++;
+    if (count<4) {
+      if (index<14&&index_next<14) {
+	// Two bytes we have seen recently, so pack them in a single byte
+	// $<2nd byte index><first byte index>
+	packed_data[packed_len++]=index_next+(index<<4);
+	// Update recent data table
+	update_recent_bytes(texture_data[i]);
+	update_recent_bytes(texture_data[i+1]);
+	i+=2;
+      } else if (index<14) {
+	// Two bytes, the 2nd of which is not recent
+	// We need to know how many bytes to encode raw
+	// after this point.
+	int nonpackable_count=1;
+	copy_recent_list();
+	while((i+nonpackable_count)<texture_offset) {
+	  if (recent_index(texture_data[i+nonpackable_count])<14) break;
+	  if (recent_copy_index(texture_data[i+nonpackable_count])<14) break;
+	  update_copy_recent_bytes(texture_data[i+nonpackable_count]);
+	}
+	// XXX Need dynamic programming to optimise this.
+	// We'll just use a greedy algorithm for now.
+	packed_data[packed_len++]=(index<<4)+0xf;
+	if (nonpackable_count>255) nonpackable_count=255;
+	packed_data[packed_len++]=nonpackable_count;
+	for(int j=0;j<nonpackable_count;j++)
+	  packed_data[packed_len++]=texture_data[i+1+j];
+	i+=1+nonpackable_count;
+      } else {
+	// One or more non-recent bytes
+	int nonpackable_count=1;
+	copy_recent_list();
+	while((i+nonpackable_count)<texture_offset) {
+	  if (recent_index(texture_data[i+nonpackable_count])<14) break;
+	  if (recent_copy_index(texture_data[i+nonpackable_count])<14) break;
+	  update_copy_recent_bytes(texture_data[i+nonpackable_count]);
+	}
+	if (nonpackable_count>255) nonpackable_count=255;
+	if (nonpackable_count<15) {
+	  packed_data[packed_len++]=0xe0+nonpackable_count;	  
+	} else {
+	  packed_data[packed_len++]=0xef;
+	  packed_data[packed_len++]=nonpackable_count;
+	}
+	for(int j=0;j<nonpackable_count;j++)
+	  packed_data[packed_len++]=texture_data[i+j];
+	i+=nonpackable_count;	
+      }
+    } else {
+      // More than 4 identical bytes: RLE encode
+      uint8_t the_value=texture_data[i];
+      update_recent_bytes(the_value);
+      i+=count;
+      while(count) {	
+	if (count>=15) {
+	  // RLE encode 15 identical bytes, whether seen recently or not
+	  // $FF <count> <byte>
+	  packed_data[packed_len++]=0xFF;
+	  packed_data[packed_len++]=count<255?count:255;
+	  packed_data[packed_len++]=the_value;
+	  if (count>255) count-=255; else count=0;
+	} else {
+	  // $F<count> <byte>
+	  packed_data[packed_len++]=0xF0+count;
+	  packed_data[packed_len++]=the_value;
+	  count=0;
+	}
+      }
+    }
+  }
+  // End stream with byte that cannot occur otherwise
+  packed_data[packed_len++]=0xe0;
+
+  fprintf(stderr,"Packed texture data into %d bytes.\n",packed_len);
+
+  // Test decompression
+  unpack_textures();
+  fprintf(stderr,"Verified decompression. Extracted size is %d bytes.\n",unpacked_len);
+  
+}
+
+
+
+
+/* ============================================================= */
 
 int main(int argc, char **argv)
 {
@@ -172,10 +367,10 @@ int main(int argc, char **argv)
       }
       
       fprintf(stderr,"Reading %s\n",argv[i]);
-      read_png_file(argv[1]);
+      read_png_file(argv[i]);
       fprintf(stderr,"Image is %dx%d\n",width,height);
-      if (width!=64||height!=64) {
-	fprintf(stderr,"ERROR: Texture images must all be 64x64 pixels.\n");
+      if (width%64||height!=64) {
+	fprintf(stderr,"ERROR: Texture images must all be (64 x n)x64 pixels.\n");
 	exit(-1);
       }
       
@@ -198,7 +393,7 @@ int main(int argc, char **argv)
       }
 
       long long pixel_value=0;
-      for(int xx=0;xx<64;xx++) {
+      for(int xx=0;xx<width;xx++) {
 	for(int yy=0;yy<64;yy++) {
 	  int red=row_pointers[yy][xx*multiplier+0];
 	  int green=row_pointers[yy][xx*multiplier+1];
@@ -244,6 +439,8 @@ int main(int argc, char **argv)
     fprintf(f,"extern const uint8_t textures[%d];\n",texture_offset);
     fclose(f);
   }
+
+  pack_textures();
   
   return 0;  
 }
