@@ -191,6 +191,7 @@ int update_recent_bytes(uint8_t v)
   if (index>13) index=13;
   for(int i=index;i>=1;i--) recent_bytes[i]=recent_bytes[i-1];
   recent_bytes[0]=v;
+  fprintf(stderr,"Putting $%02 at head of recent values.\n",v);
 }
 
 int update_copy_recent_bytes(uint8_t v)
@@ -214,6 +215,30 @@ void unpack_textures(void)
   for(int i=0;i<14;i++) recent_bytes[i]=0;
   
   while((packed_data[ofs]!=0xe0)) {
+
+    fprintf(stderr,"Depacking %02x %02x %02x %02x %02x %02x %02x %02x\n",
+	    packed_data[ofs+0],
+	    packed_data[ofs+1],
+	    packed_data[ofs+2],
+	    packed_data[ofs+3],
+	    packed_data[ofs+4],
+	    packed_data[ofs+5],
+	    packed_data[ofs+6],
+	    packed_data[ofs+7]);
+    fprintf(stderr,"Recent bytes: ");
+    for(int i=0;i<14;i++) fprintf(stderr,"%02x ",recent_bytes[i]);
+    fprintf(stderr,"\n");
+    
+    int errors=0;
+    for(int o=0;o<unpacked_len;o++) {
+      if (unpacked_data[o]!=texture_data[o]) {
+	fprintf(stderr,"ERROR: Unpacked data at offset $%04x should be $%02x, but saw $%02x\n",
+		texture_data[o],unpacked_data[o]);
+	errors++;
+      }
+    }
+    if (errors) exit(-3);
+    
     if (ofs>=packed_len||unpacked_len>texture_offset) {
       fprintf(stderr,"Error verifying decompression.\n");
       exit(-1);
@@ -264,14 +289,37 @@ void unpack_textures(void)
 
 void pack_textures(void)
 {
+  int last_packed_len=0;
+  
   for(int i=0;i<14;i++) recent_bytes[i]=0;
   for(int i=0;i<texture_offset;) {
     int count=0;
     int index=recent_index(texture_data[i]);
     int index_next=recent_index(texture_data[i+1]);
     while(texture_data[i+count]==texture_data[i]) count++;
+
+    fprintf(stderr,"Packed data emitted: ");
+    while(last_packed_len<packed_len) fprintf(stderr,"%02x ",packed_data[last_packed_len++]);
+    fprintf(stderr,"\n");
+
+    fprintf(stderr,"@$%04x : %02x %02x %02x %02x %02x %02x %02x %02x\n",
+	    i,
+	    texture_data[i+0],
+	    texture_data[i+1],
+	    texture_data[i+2],
+	    texture_data[i+3],
+	    texture_data[i+4],
+	    texture_data[i+5],
+	    texture_data[i+6],
+	    texture_data[i+7]);
+    fprintf(stderr,"index=%d,%d, count=%d\n",index,index_next,count);
+    fprintf(stderr,"Recent bytes: ");
+    for(int i=0;i<14;i++) fprintf(stderr,"%02x ",recent_bytes[i]);
+    fprintf(stderr,"\n");
+    
     if (count<4) {
       if (index<14&&index_next<14) {
+		
 	// Two bytes we have seen recently, so pack them in a single byte
 	// $<2nd byte index><first byte index>
 	packed_data[packed_len++]=index_next+(index<<4);
@@ -295,8 +343,10 @@ void pack_textures(void)
 	packed_data[packed_len++]=(index<<4)+0xf;
 	if (nonpackable_count>255) nonpackable_count=255;
 	packed_data[packed_len++]=nonpackable_count;
-	for(int j=0;j<nonpackable_count;j++)
+	for(int j=0;j<nonpackable_count;j++) {
 	  packed_data[packed_len++]=texture_data[i+1+j];
+	  update_recent_bytes(texture_data[i+j]);
+	}
 	i+=1+nonpackable_count;
       } else {
 	// One or more non-recent bytes
@@ -314,8 +364,10 @@ void pack_textures(void)
 	  packed_data[packed_len++]=0xef;
 	  packed_data[packed_len++]=nonpackable_count;
 	}
-	for(int j=0;j<nonpackable_count;j++)
+	for(int j=0;j<nonpackable_count;j++) {
 	  packed_data[packed_len++]=texture_data[i+j];
+	  update_recent_bytes(texture_data[i+j]);
+	}
 	i+=nonpackable_count;	
       }
     } else {
