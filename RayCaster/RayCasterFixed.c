@@ -6,6 +6,8 @@
 #define LOOKUP_STORAGE extern
 #include "RayCasterTables.h"
 
+#define TEXTURE_ADDRESS 0x12000
+
 #include "debug.h"
 
 uint16_t maze_get_cell(uint8_t x,uint8_t y);
@@ -528,8 +530,6 @@ void TraceFrame(uint16_t playerX, uint16_t playerY, uint16_t playerDirection)
 }
 #endif
 
-uint8_t sky_texture[0x100];
-
 uint8_t dlist[29]={
   0x0a, // F018A style job
   0x80,0x00,0x81,0x00, // src and dst both in first 1MB
@@ -549,7 +549,9 @@ uint8_t dlist[29]={
   
 };
 
-void dma_stepped_copy(long src, long dst,uint16_t count,
+char m[160];
+
+void dma_stepped_copy(uint32_t src, uint32_t dst,uint16_t count,
 		      uint8_t step_src_whole,uint8_t step_src_fraction,
 		      uint8_t step_dst_whole,uint8_t step_dst_fraction)
 {
@@ -568,22 +570,11 @@ void dma_stepped_copy(long src, long dst,uint16_t count,
   dlist[23]=src>>16;
   dlist[24]=dst&0xff;
   dlist[25]=dst>>8;
-  dlist[26]=dst>>16;
+  dlist[26]=dst>>16L;
 
   POKE(0xD702,0x00);
   POKE(0xD701,(uint16_t)(&dlist)>>8);
   POKE(0xD705,(uint16_t)(&dlist)&0xff);
-}
-
-void setup_sky(void)
-{
-  // Calculate sky texture
-  for(y = 0; y < HORIZON_HEIGHT; y++)
-    {
-      sky_texture[y]=96+(HORIZON_HEIGHT - y);
-      sky_texture[HORIZON_HEIGHT+y]=96+(y-HORIZON_HEIGHT);
-    }
-    
 }
 
 
@@ -611,6 +602,7 @@ void TraceFrameFast(uint16_t playerX, uint16_t playerY, uint16_t playerDirection
 
       if (texture_num>=NUM_TEXTURES) texture_num=0;
       texture_offset=texture_num<<12;
+      texture_offset=5<<12;
       
 	//	if (sso>2*HORIZON_HEIGHT) sso=2*HORIZON_HEIGHT;
 
@@ -637,9 +629,14 @@ void TraceFrameFast(uint16_t playerX, uint16_t playerY, uint16_t playerDirection
       
 	// Plot upper horizon part of the image
 	// Use a DMA job with stepped destination
-      dma_stepped_copy(sky_texture,x_offset,
+	// For the sky, we have a stretched cloud image that we rotate around
+	// to match the view angle. It looks nice and helps the player know where they are
+	// pointed
+	dma_stepped_copy(TEXTURE_ADDRESS
+			 +(rayAngle*320/1024)*64
+			 ,x_offset,
 		       ws,
-		       0x01,0x00,
+		       0x00,0xa0,
 		       0x08,0x00);
 
       //      POKE(0xD020,0x00);
@@ -647,7 +644,7 @@ void TraceFrameFast(uint16_t playerX, uint16_t playerY, uint16_t playerDirection
 	// Use DMA to copy texture.
       // XXX Textures are sideways in RAM compared with how we can get the DMA to step through them
       // A truly optimised version would fix this.
-	dma_stepped_copy(textures+texture_offset+(tx<<6)+texture_y_offset,x_offset+(ws<<3),
+	dma_stepped_copy(TEXTURE_ADDRESS+texture_offset+(tx<<6)+texture_y_offset,x_offset+(ws<<3),
 			 sso2,
 			 0+(ts>>10),ts>>2,
 			 0x08,0x00);
@@ -655,7 +652,7 @@ void TraceFrameFast(uint16_t playerX, uint16_t playerY, uint16_t playerDirection
 	//      POKE(0xD020,0x00);
 	
 	// Use DMA job with stepped destination to draw floor
-	dma_stepped_copy(sky_texture+(ws+sso*2),x_offset+((ws+sso2)<<3),
+	dma_stepped_copy(TEXTURE_ADDRESS+(ws+sso*2),x_offset+((ws+sso2)<<3),
 			 ws,
 			 0x01,0x00,
 			 0x08,0x00);

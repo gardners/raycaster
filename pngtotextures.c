@@ -220,6 +220,7 @@ void unpack_textures(void)
   
   while((packed_data[ofs]!=0xe0)) {
 
+    
 #if 0
     fprintf(stderr,"Depacking @ $%04x : %02x %02x %02x %02x %02x %02x %02x %02x\n",
 	    ofs,
@@ -499,9 +500,11 @@ int main(int argc, char **argv)
   }
   printf("};\n\n");
 
-  printf("const uint8_t textures[%d] = {\n",texture_offset);
-  for(int i=0;i<texture_offset;i++) {
-    printf("0x%02x%c",texture_data[i],i<(texture_offset-1)?',':' ');
+  pack_textures(); 
+  
+  printf("const uint8_t packed_textures[%d] = {\n",packed_len);
+  for(int i=0;i<packed_len;i++) {
+    printf("0x%02x%c",packed_data[i],i<(packed_len-1)?',':' ');
     if ((i&0xf)==0xf) printf("\n");
   }
   printf("};\n\n");  
@@ -510,12 +513,10 @@ int main(int argc, char **argv)
   if (f) {
     fprintf(f,"#define NUM_TEXTURES %d\n",texture_offset/(64*64));
     fprintf(f,"extern const uint8_t colours[768];\n");
-    fprintf(f,"extern const uint8_t textures[%d];\n",texture_offset);
+    fprintf(f,"extern const uint8_t packed_textures[%d];\n",texture_offset);
     fclose(f);
   }
 
-  pack_textures();
-  
   return 0;  
 }
 

@@ -11,6 +11,8 @@
 
 #include "textures.h"
 
+#define TEXTURE_ADDRESS 0x12000L
+
 // These are the step per jiffy. Multiply by 10 for movement per second
 // 256 = one whole square
 #define STEP 48
@@ -32,6 +34,131 @@ unsigned short i,j;
 unsigned char a,b,c,d;
 
 unsigned char diag_mode=0;
+
+char msg[160+1];
+
+/* Simple depacker for compressed textures
+ */
+uint8_t recent_bytes[14]={0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+uint8_t recent_index(uint8_t v)
+{
+  for(a=0;a<14;a++) if (v==recent_bytes[a]) return a;
+  return 255;
+}
+void update_recent_bytes(uint8_t v)
+{
+#if 0
+  snprintf(msg,160,"moving $%02x to head of recent bytes: %02x %02x %02x %02x ...\n",
+	   v,recent_bytes[0],recent_bytes[1],recent_bytes[2],recent_bytes[3]);
+  debug_msg(msg);
+#endif
+  a=recent_index(v);
+  if (a>13) a=13;
+  for(b=a;b>=1;b--) recent_bytes[b]=recent_bytes[b-1];
+  recent_bytes[0]=v;
+}
+
+uint16_t ofs=0;
+uint8_t value,value2;
+int16_t count;
+
+uint32_t unpacked_len=0;
+
+
+void unpack_textures(const uint8_t *packed_data)
+{
+
+  unpacked_len=0;
+  // Reset recent bytes list
+  for(value=0;value<14;value++) recent_bytes[value]=0;
+  
+  while((packed_data[ofs]!=0xe0)) {
+
+#if 0
+    snprintf(msg,160,"depacking @ $%04x : %02x %02x %02x %02x %02x %02x %02x %02x\n",
+	    ofs,
+	    packed_data[ofs+0],
+	    packed_data[ofs+1],
+	    packed_data[ofs+2],
+	    packed_data[ofs+3],
+	    packed_data[ofs+4],
+	    packed_data[ofs+5],
+	    packed_data[ofs+6],
+	    packed_data[ofs+7]);
+    debug_msg(msg);
+    snprintf(msg,160,"recent bytes: %02x %02x %02x %02x %02x %02x ...\n",
+	     recent_bytes[0],recent_bytes[1],recent_bytes[2],recent_bytes[3],
+	     recent_bytes[4],recent_bytes[5],recent_bytes[6],recent_bytes[7]);
+    debug_msg(msg);
+#endif
+    
+    // Show signs of life while depacking textures
+    POKE(0xD020,(PEEK(0xD020)+1)&0x0f);
+    
+    if (packed_data[ofs]==0xff) {
+      // Long RLE sequence
+      count=packed_data[++ofs];
+      value=packed_data[++ofs];
+      update_recent_bytes(value);
+      lfill(TEXTURE_ADDRESS+unpacked_len,value,count);
+      unpacked_len+=count;
+      ofs++;
+    } else if ((packed_data[ofs]&0xf0)==0xe0) {
+      // String of non-packed bytes
+      if ((packed_data[ofs]&0x0f)==0x0f)
+	count=packed_data[++ofs];
+      else
+	count=packed_data[ofs]&0x0f;
+#if 0
+      snprintf(msg,160,"extracing %d raw bytes.\n",count);
+      debug_msg(msg);
+#endif
+      lcopy(&packed_data[++ofs],TEXTURE_ADDRESS+unpacked_len,count);
+      unpacked_len+=count;
+      while(count--) {
+	update_recent_bytes(packed_data[ofs++]);
+      }
+    } else if ((packed_data[ofs]&0xf0)==0xf0) {
+      // Short RLE sequence
+      count=packed_data[ofs]&0x0f;
+      value=packed_data[++ofs];
+      lfill(TEXTURE_ADDRESS+unpacked_len,value,count);
+      unpacked_len+=count;
+      update_recent_bytes(value);
+      ofs++;
+    } else {
+      //      fprintf(stderr,"Decoding $%02x\n",packed_data[ofs]);
+      value=recent_bytes[packed_data[ofs]>>4];
+      count=packed_data[ofs]&0x0f;
+      if (count==15) {
+	lpoke(TEXTURE_ADDRESS+unpacked_len,value);
+	unpacked_len++;
+	update_recent_bytes(value);
+	count=packed_data[++ofs];
+	ofs++;
+	lcopy(&packed_data[ofs],TEXTURE_ADDRESS+unpacked_len,count);
+	unpacked_len+=count;
+	while(count--) {
+	  update_recent_bytes(packed_data[ofs++]);
+	}
+      } else {
+	// Actually a 2nd recent byte
+	value2=recent_bytes[count];
+	//	fprintf(stderr,"Looking up 2nd value from index #%d = $%02x\n",count,value2);
+	update_recent_bytes(value);
+	lpoke(TEXTURE_ADDRESS+unpacked_len,value);	
+	lpoke(TEXTURE_ADDRESS+unpacked_len+1,value2);	
+	unpacked_len+=2;
+	update_recent_bytes(value2);
+	ofs++;
+      }
+    }
+  }
+}
+
+
+
+
 
 void text80_mode(void)
 {
@@ -90,18 +217,18 @@ void graphics_mode(void)
   POKE(0xD059,160>>8);
   // Draw 80 chars per row
   POKE(0xD05E,80);
-  // Put 4000 byte screen at $12000
+  // Put 4000 byte screen at $C000
   POKE(0xD060,0x00);
-  POKE(0xD061,0x20);
-  POKE(0xD062,0x01);
+  POKE(0xD061,0xC0);
+  POKE(0xD062,0x00);
 
   // Layout screen so that graphics data comes from $40000 -- $5FFFF
 
   i=0x40000/0x40;
   for(a=0;a<80;a++)
     for(b=0;b<25;b++) {
-      lpoke(0x12000L+b*160+a*2+0,i&0xff);
-      lpoke(0x12000L+b*160+a*2+1,i>>8);
+      POKE(0xC000+b*160+a*2+0,i&0xff);
+      POKE(0xC000+b*160+a*2+1,i>>8);
 
       i++;
     }
@@ -174,13 +301,14 @@ void main(void)
   POKE(0xD02F,0x53);
 
   while(PEEK(0xD610)) POKE(0xD610,0);
+
+  unpack_textures(packed_textures);
   
   POKE(0xD020,0);
   POKE(0xD021,0);
-
+  
   graphics_mode();
 
-  setup_sky();
   setup_multiplier();
 
   // Generate a maze
