@@ -190,7 +190,7 @@ void main(void)
 
   // Generate a maze
   // Must have odd size, so walls an corridors can co-exist.
-  generate_maze(41,41,1);
+  generate_maze(63,63,1);
   for(px=0;px<40;px++)
     for(py=0;py<40;py++) {
       if (maze_get_cell(px,py)) plot_pixel(px,py,0x80);

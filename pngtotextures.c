@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <string.h>
 #include <strings.h>
 #include <stdarg.h>
@@ -92,7 +93,7 @@ void read_png_file(char* file_name)
   color_type = png_get_color_type(png_ptr, info_ptr);
   bit_depth = png_get_bit_depth(png_ptr, info_ptr);
 
-  printf("Input-file is: width=%d, height=%d.\n", width, height);
+  fprintf(stderr,"Input-file is: width=%d, height=%d.\n", width, height);
 
   number_of_passes = png_set_interlace_handling(png_ptr);
   png_read_update_info(png_ptr, info_ptr);
@@ -112,7 +113,6 @@ void read_png_file(char* file_name)
     infile = NULL;
   }
 
-  printf("Input-file is read and now closed\n");
 }
 
 
@@ -158,59 +158,27 @@ unsigned char nyblswap(unsigned char in)
 
 /* ============================================================= */
 
-int cut_sprite(int x1,int y1,int x2,int y2)
-{
-  
-  int xstep=(x2-x1)/24;
-  int ystep=(y2-y1)/21;
-
-  int x,y;
-  int xx,yy;
-  for(y=0;y<21;y++) {
-    printf("  /* ");
-    unsigned int bit_vector=0;
-    for(x=0;x<24;x++)
-      {
-	
-	long long pixel_value=0;
-	for(yy=0;yy<ystep;yy++)
-	  for(xx=0;xx<xstep;xx++) {
-	    pixel_value+=row_pointers[y1+y*ystep+yy][(x1+x*xstep+xx)*multiplier];
-	  }
-	if (xstep||ystep)
-	  pixel_value/=(xstep*ystep);
-	else {
-	  printf("Error: xstep=%d, ystep=%d\n",xstep,ystep);
-	}
-	//	printf("[%02x]",pixel_value&0xff);
-	if (pixel_value<0x7f) printf("*"); else printf(".");
-	bit_vector=bit_vector<<1;
-	if (pixel_value<0x7f) bit_vector|=1;
-      }
-    printf("*/  ");
-    printf("  0x%02x,0x%02x,0x%02x,\n",
-	   (bit_vector>>16)&0xff,(bit_vector>>8)&0xff,(bit_vector>>0)&0xff);
-  }
-  printf("  0xff,\n");
-  return 0;
-}
-
-
-/* ============================================================= */
+uint8_t texture_data[128*1024];
+int texture_offset=0;
 
 int main(int argc, char **argv)
 {
 
   for(int i=1;i<argc;i++)
-    {  
-      printf("Reading %s\n",argv[i]);
+    {
+      if (texture_offset>=(128*1024)) {
+	fprintf(stderr,"Too many textures.\n");
+	exit(-1);
+      }
+      
+      fprintf(stderr,"Reading %s\n",argv[i]);
       read_png_file(argv[1]);
-      printf("Image is %dx%d\n",width,height);
+      fprintf(stderr,"Image is %dx%d\n",width,height);
       if (width!=64||height!=64) {
 	fprintf(stderr,"ERROR: Texture images must all be 64x64 pixels.\n");
 	exit(-1);
       }
-
+      
       int multiplier=-1;
       if (png_get_color_type(png_ptr, info_ptr) == PNG_COLOR_TYPE_RGB)
 	multiplier=3;
@@ -236,15 +204,40 @@ int main(int argc, char **argv)
 	  int green=row_pointers[yy][xx*multiplier+1];
 	  int blue=row_pointers[yy][xx*multiplier+2];
 	  int pixel_value=palette_lookup(red,green,blue);
-	  printf("%02x",pixel_value&0xff);
+	  texture_data[texture_offset++]=pixel_value;
 	}
-	printf("\n");
       }
-      
-      
-  }
+    }
+  fprintf(stderr,"%d bytes of texture data used %d colours\n",
+	  texture_offset,palette_index);
 
-  return 0;
+  printf("const uint8_t colours[768] = {\n");
+  for(int i=0;i<256;i++) {
+    printf("0x%02x%c",(palette[i].r>>4)|((palette[i].r<<4)&0xe0),
+	   i<255?',':',');
+    if ((i&0xf)==0xf) printf("\n");
+  }
+  for(int i=0;i<256;i++) {
+    printf("0x%02x%c",(palette[i].g>>4)|((palette[i].g<<4)&0xf0),
+	   i<255?',':',');
+    if ((i&0xf)==0xf) printf("\n");
+  }
+  for(int i=0;i<256;i++) {
+    printf("0x%02x%c",(palette[i].b>>4)|((palette[i].b<<4)&0xf0),
+	   i<255?',':' ');
+    if ((i&0xf)==0xf) printf("\n");
+  }
+  printf("};\n\n");
+
+  printf("#define NUM_TEXTURES %d\n",texture_offset/(64*64));
+  printf("const uint8_t textures[%d] = {\n",texture_offset);
+  for(int i=0;i<texture_offset;i++) {
+    printf("0x%02x%c",texture_data[i],i<(texture_offset-1)?',':' ');
+    if ((i&0xf)==0xf) printf("\n");
+  }
+  printf("};\n\n");  
+
+  return 0;  
 }
 
 /* ============================================================= */
