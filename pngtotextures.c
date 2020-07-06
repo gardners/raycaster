@@ -191,9 +191,11 @@ int update_recent_bytes(uint8_t v)
   if (index>13) index=13;
   for(int i=index;i>=1;i--) recent_bytes[i]=recent_bytes[i-1];
   recent_bytes[0]=v;
+#if 0
   fprintf(stderr,"Putting $%02x at head of recent values: ",v);
   for(int i=0;i<14;i++) fprintf(stderr,"%02x ",recent_bytes[i]);
   fprintf(stderr,"\n");
+#endif
 }
 
 int update_copy_recent_bytes(uint8_t v)
@@ -218,6 +220,7 @@ void unpack_textures(void)
   
   while((packed_data[ofs]!=0xe0)) {
 
+#if 0
     fprintf(stderr,"Depacking @ $%04x : %02x %02x %02x %02x %02x %02x %02x %02x\n",
 	    ofs,
 	    packed_data[ofs+0],
@@ -231,6 +234,7 @@ void unpack_textures(void)
     fprintf(stderr,"Recent bytes: ");
     for(int i=0;i<14;i++) fprintf(stderr,"%02x ",recent_bytes[i]);
     fprintf(stderr,"\n");
+#endif
     
     int errors=0;
     for(int o=0;o<unpacked_len;o++) {
@@ -260,7 +264,7 @@ void unpack_textures(void)
 	count=packed_data[++ofs];
       else
 	count=packed_data[ofs]&0x0f;
-      fprintf(stderr,"Extracing %d raw bytes.\n",count);
+      //      fprintf(stderr,"Extracing %d raw bytes.\n",count);
       while(count--) {
 	unpacked_data[unpacked_len++]=packed_data[++ofs];
 	update_recent_bytes(packed_data[ofs]);
@@ -274,7 +278,7 @@ void unpack_textures(void)
       while(count--) unpacked_data[unpacked_len++]=value;
       ofs++;
     } else {
-      fprintf(stderr,"Decoding $%02x\n",packed_data[ofs]);
+      //      fprintf(stderr,"Decoding $%02x\n",packed_data[ofs]);
       value=recent_bytes[packed_data[ofs]>>4];
       count=packed_data[ofs]&0x0f;
       if (count==15) {
@@ -289,7 +293,7 @@ void unpack_textures(void)
       } else {
 	// Actually a 2nd recent byte
 	value2=recent_bytes[count];
-	fprintf(stderr,"Looking up 2nd value from index #%d = $%02x\n",count,value2);
+	//	fprintf(stderr,"Looking up 2nd value from index #%d = $%02x\n",count,value2);
 	update_recent_bytes(value);
 	unpacked_data[unpacked_len++]=value;
 	unpacked_data[unpacked_len++]=value2;
@@ -312,6 +316,7 @@ void pack_textures(void)
     int index_next=recent_index(texture_data[i+1]);
     while(texture_data[i+count]==texture_data[i]) count++;
 
+#if 0
     fprintf(stderr,"Packed data emitted @ $%04x: ",last_packed_len);
     while(last_packed_len<packed_len) fprintf(stderr,"%02x ",packed_data[last_packed_len++]);
     fprintf(stderr,"\n");
@@ -330,6 +335,7 @@ void pack_textures(void)
     fprintf(stderr,"Recent bytes: ");
     for(int i=0;i<14;i++) fprintf(stderr,"%02x ",recent_bytes[i]);
     fprintf(stderr,"\n");
+#endif
     
     if (count<4) {
       if (index<14&&index_next<14) {
@@ -368,7 +374,7 @@ void pack_textures(void)
 	int nonpackable_count=1;
 	copy_recent_list();
 	while((i+nonpackable_count)<texture_offset) {
-	  fprintf(stderr,"Looking for $%02x in recent lists.\n",texture_data[i+nonpackable_count]);
+	  //	  fprintf(stderr,"Looking for $%02x in recent lists.\n",texture_data[i+nonpackable_count]);
 	  if (recent_copy_index(texture_data[i+nonpackable_count])<14) break;
 	  update_copy_recent_bytes(texture_data[i+nonpackable_count]);
 	  nonpackable_count++;
