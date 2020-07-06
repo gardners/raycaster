@@ -191,7 +191,7 @@ int update_recent_bytes(uint8_t v)
   if (index>13) index=13;
   for(int i=index;i>=1;i--) recent_bytes[i]=recent_bytes[i-1];
   recent_bytes[0]=v;
-  fprintf(stderr,"Putting $%02 at head of recent values.\n",v);
+  fprintf(stderr,"Putting $%02x at head of recent values.\n",v);
 }
 
 int update_copy_recent_bytes(uint8_t v)
@@ -206,7 +206,7 @@ void unpack_textures(void)
 {
   int ofs=0;
 
-  uint8_t value;
+  uint8_t value,value2;
   int count;
   
   int last_unpacked_len=0;
@@ -233,7 +233,7 @@ void unpack_textures(void)
     for(int o=0;o<unpacked_len;o++) {
       if (unpacked_data[o]!=texture_data[o]) {
 	fprintf(stderr,"ERROR: Unpacked data at offset $%04x should be $%02x, but saw $%02x\n",
-		texture_data[o],unpacked_data[o]);
+		o,texture_data[o],unpacked_data[o]);
 	errors++;
       }
     }
@@ -256,10 +256,12 @@ void unpack_textures(void)
 	count=packed_data[++ofs];
       else
 	count=packed_data[ofs]&0x0f;
+      fprintf(stderr,"Extracing %d raw bytes.\n",count);
       while(count--) {
 	unpacked_data[unpacked_len++]=packed_data[++ofs];
 	update_recent_bytes(packed_data[ofs]);
       }
+      ofs++;
     } else if ((packed_data[ofs]&0xf0)==0xf0) {
       // Short RLE sequence
       count=packed_data[ofs]&0x0f;
@@ -268,18 +270,19 @@ void unpack_textures(void)
       while(count--) unpacked_data[unpacked_len++]=value;
     } else {
       value=recent_bytes[packed_data[ofs]>>4];
-      update_recent_bytes(value);
       count=recent_bytes[packed_data[ofs]]&0x0f;
       if (count==15) {
+	update_recent_bytes(value);
 	while(count--) {
 	  unpacked_data[unpacked_len++]=packed_data[++ofs];
 	  update_recent_bytes(packed_data[ofs]);
 	}
       } else {
 	// Actually a 2nd recent byte
-	value=recent_bytes[count];
-	unpacked_data[unpacked_len++]=value;
-	update_recent_bytes(value);	
+	value2=recent_bytes[count];
+	update_recent_bytes(value);
+	unpacked_data[unpacked_len++]=value2;
+	update_recent_bytes(value2);
 	ofs++;
       }
     }
@@ -353,9 +356,10 @@ void pack_textures(void)
 	int nonpackable_count=1;
 	copy_recent_list();
 	while((i+nonpackable_count)<texture_offset) {
-	  if (recent_index(texture_data[i+nonpackable_count])<14) break;
+	  fprintf(stderr,"Looking for $%02x in recent lists.\n",texture_data[i+nonpackable_count]);
 	  if (recent_copy_index(texture_data[i+nonpackable_count])<14) break;
 	  update_copy_recent_bytes(texture_data[i+nonpackable_count]);
+	  nonpackable_count++;
 	}
 	if (nonpackable_count>255) nonpackable_count=255;
 	if (nonpackable_count<15) {
