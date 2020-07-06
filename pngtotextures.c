@@ -253,6 +253,7 @@ void unpack_textures(void)
       value=packed_data[++ofs];
       update_recent_bytes(value);
       while(count--) unpacked_data[unpacked_len++]=value;
+      ofs++;
     } else if ((packed_data[ofs]&0xf0)==0xe0) {
       // String of non-packed bytes
       if ((packed_data[ofs]&0x0f)==0x0f)
@@ -311,7 +312,7 @@ void pack_textures(void)
     int index_next=recent_index(texture_data[i+1]);
     while(texture_data[i+count]==texture_data[i]) count++;
 
-    fprintf(stderr,"Packed data emitted: ");
+    fprintf(stderr,"Packed data emitted @ $%04x: ",last_packed_len);
     while(last_packed_len<packed_len) fprintf(stderr,"%02x ",packed_data[last_packed_len++]);
     fprintf(stderr,"\n");
 
