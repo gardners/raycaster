@@ -195,11 +195,6 @@ void main(void)
   
   while(1)
     {
-      if (px<(0<<8)) px=0<<8;
-      if (py<(0<<8)) py=0<<8;
-      if (px>(31<<8)) px=31<<8;
-      if (py>(31<<8)) py=31<<8;
-
       POKE(0xD614,0x01);
       forward_held=(~PEEK(0xD613))&0x02; // W
       left_held=(~PEEK(0xD613))&0x04; // A 
@@ -207,6 +202,12 @@ void main(void)
       POKE(0xD614,0x02);
       right_held=(~PEEK(0xD613))&0x04; // D
 
+      if (!(PEEK(0xDC00)&1)) forward_held=1;
+      if (!(PEEK(0xDC00)&2)) back_held=1;
+      if (!(PEEK(0xDC00)&4)) left_held=1;
+      if (!(PEEK(0xDC00)&8)) right_held=1;
+
+      
       // Directly check the cursor left/up key status to tell the different situations apart
       POKE(0xD614,0x00);
       if (PEEK(0xD60F)&0x02) forward_held=1;
@@ -265,9 +266,9 @@ void main(void)
       if (forward_held) {
 	py+=MulCos(i,STEP*last_frame_duration);	    
 	px+=MulSin(i,STEP*last_frame_duration);
-	
+
 	if (IsWall(px>>8,py>>8)) {
-	  py-=MulCos(i,STEP*last_frame_duration);	    
+	  py-=MulCos(i,STEP*last_frame_duration);
 	  px-=MulSin(i,STEP*last_frame_duration);
 	}
       }
