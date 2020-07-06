@@ -9,6 +9,8 @@
 #include <debug.h>
 #include <random.h>
 
+#include "textures.h"
+
 // These are the step per jiffy. Multiply by 10 for movement per second
 // 256 = one whole square
 #define STEP 48

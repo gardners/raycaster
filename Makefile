@@ -25,8 +25,7 @@ CL65=  cl65 --config src/tests/vicii.cfg
 
 CBMCONVERT=	cbmconvert/cbmconvert
 
-SDCARD_FILES=	$(SDCARD_DIR)/M65UTILS.D81 \
-		$(SDCARD_DIR)/M65TESTS.D81
+SRCDIR=	src
 
 all:	raycaster.prg
 

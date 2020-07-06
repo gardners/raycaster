@@ -1,7 +1,7 @@
 // fixed-point implementation
 
 #include "RayCasterFixed.h"
-#include "RayCasterData.h"
+#include "../textures.h"
 
 #define LOOKUP_STORAGE extern
 #include "RayCasterTables.h"
@@ -18,6 +18,10 @@ uint16_t _playerY;
 int16_t  _playerA;
 uint8_t  _viewQuarter;
 uint8_t  _viewAngle;
+
+uint16_t texture_offset=0;
+uint8_t texture_num=0;
+
 
 char msg[160+1];
 
@@ -199,7 +203,8 @@ int16_t hitX;
 int16_t hitY;
 
 void CalculateDistance(
-    uint16_t rayX, uint16_t rayY, uint16_t rayA, int16_t* deltaX, int16_t* deltaY, uint8_t* textureNo, uint8_t* textureX)
+		       uint16_t rayX, uint16_t rayY, uint16_t rayA, int16_t* deltaX, int16_t* deltaY, uint8_t* textureNo, uint8_t* textureX,
+		       uint8_t *texture_num)
 {
   interceptX = rayX;
   interceptY = rayY;
@@ -230,7 +235,8 @@ void CalculateDistance(
                 tileY += tileStepY;
                 if(IsWall(tileX, tileY))
                 {
-                    goto HorizontalHit;
+		  *texture_num=maze_get_cell(tileX,tileY);
+		  goto HorizontalHit;
                 }
             }
             break;
@@ -246,7 +252,8 @@ void CalculateDistance(
                 tileX += tileStepX;
                 if(IsWall(tileX, tileY))
                 {
-                    goto VerticalHit;
+		  *texture_num=maze_get_cell(tileX,tileY);
+		  goto VerticalHit;
                 }
             }
             break;
@@ -338,7 +345,8 @@ int16_t deltaX;
 int16_t deltaY;
 uint16_t rayAngle;
 void Trace(
-    uint16_t screenX, uint8_t* screenY, uint8_t* textureNo, uint8_t* textureX, uint16_t* textureY, uint16_t* textureStep)
+	   uint16_t screenX, uint8_t* screenY, uint8_t* textureNo, uint8_t* textureX, uint16_t* textureY, uint16_t* textureStep,
+	   uint8_t* texture_num)
 {
 
     rayAngle = (_playerA + LOOKUP16(g_deltaAngle, screenX));
@@ -360,7 +368,7 @@ void Trace(
     }
     rayAngle &= 0x3ff;
 
-    CalculateDistance(_playerX, _playerY, rayAngle, &deltaX, &deltaY, textureNo, textureX);
+    CalculateDistance(_playerX, _playerY, rayAngle, &deltaX, &deltaY, textureNo, textureX,texture_num);
 
     // distance = deltaY * cos(playerA) + deltaX * sin(playerA)
     if(_playerA == 0)
@@ -474,8 +482,11 @@ void TraceFrame(uint16_t playerX, uint16_t playerY, uint16_t playerDirection)
     for(x = 0; x < SCREEN_WIDTH; x++)
     {
 
-        Trace(x, &sso, &tn, &tc, &tso, &tst);
+      Trace(x, &sso, &tn, &tc, &tso, &tst,&texture_num);
 
+      if (texture_num>=NUM_TEXTURES) texture_num=0;
+      texture_offset=texture_num<<12;
+      
         tx = (tc >> 2);
         ws = HORIZON_HEIGHT - sso;
         if(ws < 0)
@@ -498,7 +509,7 @@ void TraceFrame(uint16_t playerX, uint16_t playerY, uint16_t playerDirection)
         {
             // paint texture pixel
             ty = (to >> 10);
-            tv = g_texture8[(ty << 6) + tx];
+            tv = textures[texture_offset+(ty << 6) + tx];
 
             to += ts;
 
@@ -596,8 +607,11 @@ void TraceFrameFast(uint16_t playerX, uint16_t playerY, uint16_t playerDirection
       }
 
       //      POKE(0xD020,0x80);
-        Trace(x, &sso, &tn, &tc, &tso, &tst);
+      Trace(x, &sso, &tn, &tc, &tso, &tst,&texture_num);
 
+      if (texture_num>=NUM_TEXTURES) texture_num=0;
+      texture_offset=texture_num<<12;
+      
 	//	if (sso>2*HORIZON_HEIGHT) sso=2*HORIZON_HEIGHT;
 
 	if (sso>HORIZON_HEIGHT) {
@@ -633,7 +647,7 @@ void TraceFrameFast(uint16_t playerX, uint16_t playerY, uint16_t playerDirection
 	// Use DMA to copy texture.
       // XXX Textures are sideways in RAM compared with how we can get the DMA to step through them
       // A truly optimised version would fix this.
-	dma_stepped_copy(g_texture8+(tx<<6)+texture_y_offset,x_offset+(ws<<3),
+	dma_stepped_copy(textures+texture_offset+(tx<<6)+texture_y_offset,x_offset+(ws<<3),
 			 sso2,
 			 0+(ts>>10),ts>>2,
 			 0x08,0x00);

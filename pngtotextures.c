@@ -211,6 +211,7 @@ int main(int argc, char **argv)
   fprintf(stderr,"%d bytes of texture data used %d colours\n",
 	  texture_offset,palette_index);
 
+  printf("#include <stdint.h>\n");
   printf("const uint8_t colours[768] = {\n");
   for(int i=0;i<256;i++) {
     printf("0x%02x%c",(palette[i].r>>4)|((palette[i].r<<4)&0xe0),
@@ -229,7 +230,6 @@ int main(int argc, char **argv)
   }
   printf("};\n\n");
 
-  printf("#define NUM_TEXTURES %d\n",texture_offset/(64*64));
   printf("const uint8_t textures[%d] = {\n",texture_offset);
   for(int i=0;i<texture_offset;i++) {
     printf("0x%02x%c",texture_data[i],i<(texture_offset-1)?',':' ');
@@ -237,6 +237,14 @@ int main(int argc, char **argv)
   }
   printf("};\n\n");  
 
+  FILE *f=fopen("textures.h","w");
+  if (f) {
+    fprintf(f,"#define NUM_TEXTURES %d\n",texture_offset/(64*64));
+    fprintf(f,"extern const uint8_t colours[768];\n");
+    fprintf(f,"extern const uint8_t textures[%d];\n",texture_offset);
+    fclose(f);
+  }
+  
   return 0;  
 }
 
