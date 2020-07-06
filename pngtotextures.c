@@ -122,9 +122,9 @@ struct rgb {
   int b;
 };
 
-struct rgb palette[2560];
+struct rgb palette[256];
 int palette_first=16;
-int palette_index=16; // only use upper half of palette
+int palette_index=16; // reserve the C64 colours
 
 int palette_lookup(int r,int g, int b)
 {
@@ -138,7 +138,7 @@ int palette_lookup(int r,int g, int b)
   }
   
   // new colour
-  if (palette_index>15) {
+  if (palette_index>255) {
     fprintf(stderr,"Too many colours in image: Must be not more than 16.\n");
     exit(-1);
   }
@@ -200,80 +200,48 @@ int cut_sprite(int x1,int y1,int x2,int y2)
 
 int main(int argc, char **argv)
 {
-  if (argc !=3) {
-    fprintf(stderr,"PNG to 16-colour sprite converter.\n");
-    fprintf(stderr,"Outputs a binary sprite file prefixed with 64-byte palette and size information.\n");
-    fprintf(stderr,"Usage: program_name <file in> <sprite out>\n");
-    exit(-1);
-  }
 
-  printf("Reading %s\n",argv[1]);
-  read_png_file(argv[1]);
-  printf("Image is %dx%d\n",width,height);
+  for(int i=1;i<argc;i++)
+    {  
+      printf("Reading %s\n",argv[i]);
+      read_png_file(argv[1]);
+      printf("Image is %dx%d\n",width,height);
+      if (width!=64||height!=64) {
+	fprintf(stderr,"ERROR: Texture images must all be 64x64 pixels.\n");
+	exit(-1);
+      }
 
-  int multiplier=-1;
-  if (png_get_color_type(png_ptr, info_ptr) == PNG_COLOR_TYPE_RGB)
-    multiplier=3;
+      int multiplier=-1;
+      if (png_get_color_type(png_ptr, info_ptr) == PNG_COLOR_TYPE_RGB)
+	multiplier=3;
+      
+      if (png_get_color_type(png_ptr, info_ptr) == PNG_COLOR_TYPE_RGBA)
+	multiplier=4;
+      
+      if (png_get_color_type(png_ptr, info_ptr) == PNG_COLOR_TYPE_GRAY)
+	multiplier=1;
+      
+      if (multiplier==-1) {
+	fprintf(stderr,"Could not convert file to grey-scale, RGB or RGBA\n");
+      }
+      if (multiplier<3) {
+	fprintf(stderr,"PNG images must be RGB or RGBA\n");
+	exit(-1);
+      }
 
-  if (png_get_color_type(png_ptr, info_ptr) == PNG_COLOR_TYPE_RGBA)
-    multiplier=4;
-
-  if (png_get_color_type(png_ptr, info_ptr) == PNG_COLOR_TYPE_GRAY)
-    multiplier=1;
-  
-  if (multiplier==-1) {
-    fprintf(stderr,"Could not convert file to grey-scale, RGB or RGBA\n");
-  }
-
-  if (height>255) {
-    // Sprites can only be 255 pixels high
-    fprintf(stderr,"Sprites must not be more than 255 pixels high\n");
-    exit(-1);
-  }
-  if (width>(16*8)) {
-    fprintf(stderr,"16-colour sprites can be only 16 pixels wide, so using all 8 for a single big image is limited to 128 pixels, but your image is wider than that.\n");
-    exit(-1);
-  }
-  
-  int x,y,xx,yy;
-
-  int stripe_bytes=8*height;
-  int stripe_count=width/16;
-  if (width%16) stripe_count++;
-
-#if 0
-  for(xx=0;xx<width;xx++) {
-    for(yy=0;y<height;yy++) {
-      int r=;
-      int g=;
-      int b=;
-      sprite_data[64+yy*8+(xx/16)*stripe_bytes]=palette_lookup(XXX);
-    }
-  }
-#endif
-  
-  int x1,y1,x2,y2;
-
-  for(int i=2;i<argc;i++) {
-    if (sscanf(argv[i],"%d,%d,%d,%d",&x1,&y1,&x2,&y2)==4) {
-      cut_sprite(x1,y1,x2,y2);
-      printf("\n");
-    } else {
-      printf("Could not parse argument '%s'\n",argv[i]);
-      exit(-3);
-    }
-  }
-  
-  printf("done\n");
-
-  if (infile != NULL) {
-    fclose(infile);
-    infile = NULL;
-  }
-
-  if (outfile != NULL) {
-    fclose(outfile);
-    outfile = NULL;
+      long long pixel_value=0;
+      for(int xx=0;xx<64;xx++) {
+	for(int yy=0;yy<64;yy++) {
+	  int red=row_pointers[yy][xx*multiplier+0];
+	  int green=row_pointers[yy][xx*multiplier+1];
+	  int blue=row_pointers[yy][xx*multiplier+2];
+	  int pixel_value=palette_lookup(red,green,blue);
+	  printf("%02x",pixel_value&0xff);
+	}
+	printf("\n");
+      }
+      
+      
   }
 
   return 0;
