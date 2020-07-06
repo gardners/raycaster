@@ -7,6 +7,7 @@
 #include <dirent.h>
 #include <fileio.h>
 #include <debug.h>
+#include <random.h>
 
 // 256 = one whole square
 #define STEP 64
@@ -20,6 +21,10 @@ void setup_multiplier(void);
 uint16_t MulCos(uint16_t angle,uint16_t magnitude);
 uint16_t MulSin(uint16_t angle,uint16_t magnitude);
 char IsWall(uint8_t tileX, uint8_t tileY);
+void generate_maze(uint8_t width, uint8_t height,uint32_t seed);
+uint16_t maze_get_cell(uint8_t x,uint8_t y);
+void maze_set_cell(uint8_t x,uint8_t y,uint16_t v);
+
 
 unsigned short i,j;
 unsigned char a,b,c,d;
@@ -164,14 +169,24 @@ void main(void)
 
   setup_sky();
   setup_multiplier();
+
+  // Generate a maze
+  // Must have odd size, so walls an corridors can co-exist.
+  generate_maze(41,41,1);
+  for(px=0;px<40;px++)
+    for(py=0;py<40;py++) {
+      if (maze_get_cell(px,py)) plot_pixel(px,py,0x80);
+      else plot_pixel(px,py,0x00);
+    }
+  while(1) POKE(0xD020,PEEK(0xD012));
   
   i=0;
   while(1)
     {
-      if (px<(1<<8)) px=1<<8;
-      if (py<(1<<8)) py=1<<8;
-      if (px>(30<<8)) px=30<<8;
-      if (py>(30<<8)) py=30<<8;
+      if (px<(0<<8)) px=0<<8;
+      if (py<(0<<8)) py=0<<8;
+      if (px>(31<<8)) px=31<<8;
+      if (py>(31<<8)) py=31<<8;
 
       if (PEEK(0xD610)) {
 	snprintf(m,80,"key $%02x pressed.\n",PEEK(0xD610));
