@@ -218,7 +218,8 @@ void unpack_textures(void)
   
   while((packed_data[ofs]!=0xe0)) {
 
-    fprintf(stderr,"Depacking %02x %02x %02x %02x %02x %02x %02x %02x\n",
+    fprintf(stderr,"Depacking @ $%04x : %02x %02x %02x %02x %02x %02x %02x %02x\n",
+	    ofs,
 	    packed_data[ofs+0],
 	    packed_data[ofs+1],
 	    packed_data[ofs+2],
@@ -270,18 +271,24 @@ void unpack_textures(void)
       value=packed_data[++ofs];
       update_recent_bytes(value);
       while(count--) unpacked_data[unpacked_len++]=value;
+      ofs++;
     } else {
+      fprintf(stderr,"Decoding $%02x\n",packed_data[ofs]);
       value=recent_bytes[packed_data[ofs]>>4];
       count=packed_data[ofs]&0x0f;
       if (count==15) {
+	unpacked_data[unpacked_len++]=value;
 	update_recent_bytes(value);
+	count=packed_data[++ofs];
 	while(count--) {
 	  unpacked_data[unpacked_len++]=packed_data[++ofs];
 	  update_recent_bytes(packed_data[ofs]);
 	}
+	ofs++;
       } else {
 	// Actually a 2nd recent byte
 	value2=recent_bytes[count];
+	fprintf(stderr,"Looking up 2nd value from index #%d = $%02x\n",count,value2);
 	update_recent_bytes(value);
 	unpacked_data[unpacked_len++]=value;
 	unpacked_data[unpacked_len++]=value2;
@@ -347,11 +354,12 @@ void pack_textures(void)
 	// XXX Need dynamic programming to optimise this.
 	// We'll just use a greedy algorithm for now.
 	packed_data[packed_len++]=(index<<4)+0xf;
+	update_recent_bytes(texture_data[i]);
 	if (nonpackable_count>255) nonpackable_count=255;
 	packed_data[packed_len++]=nonpackable_count;
 	for(int j=0;j<nonpackable_count;j++) {
 	  packed_data[packed_len++]=texture_data[i+1+j];
-	  update_recent_bytes(texture_data[i+j]);
+	  update_recent_bytes(texture_data[i+1+j]);
 	}
 	i+=1+nonpackable_count;
       } else {
