@@ -56,18 +56,12 @@ void divide_maze(uint8_t x1,uint8_t y1,uint8_t x2,uint8_t y2)
   else if ((x2-x1)<(y2-y1)) n=0;
   else n=rand8(0)&1;
 
-  snprintf(mm,80,"maze gen (%d,%d)-(%d,%d)\n",x1,y1,x2,y2);
-  debug_msg(mm);
-  
   if (!n) {
     // Split horizontally
     for(n=x1;n<=x2;n++) maze_set_cell(n,msy,0xffff);
     if (x2-x1) n=rand8(x2-x1)+x1; else n=x1;
     n|=1; // corridors on odd coordinates, walls on even
     maze_set_cell(n,msy,0);
-
-    while(!PEEK(0xD610)) continue;
-    POKE(0xD610,0);  
 
     if (msy) divide_maze(x1,y1,x2,msy-1);
     if (msy<y2) divide_maze(x1,msy+1,x2,y2);
@@ -79,9 +73,6 @@ void divide_maze(uint8_t x1,uint8_t y1,uint8_t x2,uint8_t y2)
     n|=1; // corridors on odd coordinates, walls on even
     maze_set_cell(msx,n,0);
 
-    while(!PEEK(0xD610)) continue;
-    POKE(0xD610,0);  
-    
     if (msx) divide_maze(x1,y1,msx-1,y2);
     if (msx<x2) divide_maze(msx+1,y1,x2,y2);    
   }

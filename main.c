@@ -149,8 +149,8 @@ void main(void)
 {
   char dma_draw=1;
   int i;
-  uint16_t px=5<<8;
-  uint16_t py=5<<8;
+  uint16_t px=1<<8;
+  uint16_t py=1<<8;
 
     asm ( "sei" );
 
@@ -178,9 +178,13 @@ void main(void)
       if (maze_get_cell(px,py)) plot_pixel(px,py,0x80);
       else plot_pixel(px,py,0x00);
     }
-  while(1) POKE(0xD020,PEEK(0xD012));
+
+  // Start in middle of start square, looking down the maze
+  px=0x0180; py=0x180;
+  if (!IsWall(1,2)) i=0x000;
+  else i=0x100;
+
   
-  i=0;
   while(1)
     {
       if (px<(0<<8)) px=0<<8;
@@ -206,11 +210,6 @@ void main(void)
 	  // Move forewards/backwards
 	case 0x11: case 0x53: case 0x73:
 
-	  snprintf(m,80,"mulcos($%04x,$%04x) = $%04x, mulsin($%04x,$%04x) = $%04x\n",
-		   i,STEP,MulCos(i,STEP),
-		   i,STEP,MulSin(i,STEP));
-	  debug_msg(m);
-	  
 	  py-=MulCos(i,STEP);	    
 	  px-=MulSin(i,STEP);
 
@@ -222,11 +221,6 @@ void main(void)
 	  break;
 	case 0x91: case 0x57: case 0x77:
 
-	  snprintf(m,80,"mulcos($%04x,$%04x) = $%04x, mulsin($%04x,$%04x) = $%04x\n",
-		   i,STEP,MulCos(i,STEP),
-		   i,STEP,MulSin(i,STEP));
-	  debug_msg(m);
-	  
 	  py+=MulCos(i,STEP);	    
 	  px+=MulSin(i,STEP);
 

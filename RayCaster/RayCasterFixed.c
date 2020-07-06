@@ -8,6 +8,8 @@
 
 #include "debug.h"
 
+uint16_t maze_get_cell(uint8_t x,uint8_t y);
+
 #define true 1
 #define false 0
 
@@ -139,11 +141,20 @@ int16_t AbsTan(uint8_t quarter, uint8_t angle, const uint16_t* lookupTable)
 
 char IsWall(uint8_t tileX, uint8_t tileY)
 {
+  if (!tileX) return true;
+  if (!tileY) return true;  
+  
+  // MSB indicates if square is passable
+  if (maze_get_cell(tileX,tileY)&0x8000) return true;
+  else return false;
+
+#if 0
     if(tileX > MAP_X - 1 || tileY > MAP_Y - 1)
     {
         return true;
     }
     return LOOKUP8(g_map, (tileX >> 3) + (tileY << (MAP_XS - 3))) & (1 << (8 - (tileX & 0x7)));
+#endif
 }
 
 void LookupHeight(uint16_t distance, uint8_t* height, uint16_t* step)
