@@ -191,7 +191,9 @@ int update_recent_bytes(uint8_t v)
   if (index>13) index=13;
   for(int i=index;i>=1;i--) recent_bytes[i]=recent_bytes[i-1];
   recent_bytes[0]=v;
-  fprintf(stderr,"Putting $%02x at head of recent values.\n",v);
+  fprintf(stderr,"Putting $%02x at head of recent values: ",v);
+  for(int i=0;i<14;i++) fprintf(stderr,"%02x ",recent_bytes[i]);
+  fprintf(stderr,"\n");
 }
 
 int update_copy_recent_bytes(uint8_t v)
@@ -270,7 +272,7 @@ void unpack_textures(void)
       while(count--) unpacked_data[unpacked_len++]=value;
     } else {
       value=recent_bytes[packed_data[ofs]>>4];
-      count=recent_bytes[packed_data[ofs]]&0x0f;
+      count=packed_data[ofs]&0x0f;
       if (count==15) {
 	update_recent_bytes(value);
 	while(count--) {
@@ -281,6 +283,7 @@ void unpack_textures(void)
 	// Actually a 2nd recent byte
 	value2=recent_bytes[count];
 	update_recent_bytes(value);
+	unpacked_data[unpacked_len++]=value;
 	unpacked_data[unpacked_len++]=value2;
 	update_recent_bytes(value2);
 	ofs++;
