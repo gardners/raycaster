@@ -9,10 +9,10 @@
 #include <debug.h>
 #include <random.h>
 
+// These are the step per jiffy. Multiply by 10 for movement per second
 // 256 = one whole square
-#define STEP 64
-// 0x100 = 90 degrees at a time
-#define ROTATE_STEP (0x100>>2)
+#define STEP 24
+#define ROTATE_STEP 18
 
 void TraceFrame(uint16_t playerX, uint16_t playerY, uint16_t playerDirection);
 void TraceFrameFast(uint16_t playerX, uint16_t playerY, uint16_t playerDirection);
@@ -145,6 +145,14 @@ void print_text80(unsigned char x,unsigned char y,unsigned char colour,char *msg
 
 char m[80+1];
 
+uint16_t last_frame_start=0;
+uint16_t last_frame_duration=0;
+
+uint8_t forward_held=0;
+uint8_t back_held=0;
+uint8_t right_held=0;
+uint8_t left_held=0;
+
 void main(void)
 {
   char dma_draw=1;
@@ -192,6 +200,20 @@ void main(void)
       if (px>(31<<8)) px=31<<8;
       if (py>(31<<8)) py=31<<8;
 
+      POKE(0xD614,0x01);
+      forward_held=(~PEEK(0xD613))&0x02; // W
+      left_held=(~PEEK(0xD613))&0x04; // A 
+      back_held=(~PEEK(0xD613))&0x20; // S
+      POKE(0xD614,0x02);
+      right_held=(~PEEK(0xD613))&0x04; // D
+
+      // Directly check the cursor left/up key status to tell the different situations apart
+      POKE(0xD614,0x00);
+      if (PEEK(0xD60F)&0x02) forward_held=1;
+      else back_held|=(~PEEK(0xD613))&0x80; // Cursor down      
+      if (PEEK(0xD60F)&0x01) left_held=1;
+      else right_held|=(~PEEK(0xD613))&0x04; // Cursor right
+      
       if (PEEK(0xD610)) {
 	snprintf(m,80,"key $%02x pressed.\n",PEEK(0xD610));
 	debug_msg(m);
@@ -204,44 +226,70 @@ void main(void)
 	  if (diag_mode) text80_mode();
 	  else graphics_mode();
 	  break;
-	case 0x1d: case 0x44: case 0x64: i+=ROTATE_STEP; i&=0x3ff; break;
-	case 0x9d: case 0x41: case 0x61: i-=ROTATE_STEP; i&=0x3ff; break;
-
+	case 0x1d: case 0x44: case 0x64:
+	  right_held=1;
+	  break;
+	case 0x9d: case 0x41: case 0x61:
+	  left_held=1;
+	  break;
 	  // Move forewards/backwards
 	case 0x11: case 0x53: case 0x73:
 
-	  py-=MulCos(i,STEP);	    
-	  px-=MulSin(i,STEP);
+	  back_held=1;
 
-	  if (IsWall(px>>8,py>>8)) {
-	    py+=MulCos(i,STEP);	    
-	    px+=MulSin(i,STEP);
-	  }
-	  
 	  break;
 	case 0x91: case 0x57: case 0x77:
 
-	  py+=MulCos(i,STEP);	    
-	  px+=MulSin(i,STEP);
+	  forward_held=1;
 
-	  if (IsWall(px>>8,py>>8)) {
-	    py-=MulCos(i,STEP);	    
-	    px-=MulSin(i,STEP);
-	  }
-	  
 	  break;
 	}
 	POKE(0xD610,0);
       }
 
+      if (right_held) {
+	  i+=ROTATE_STEP*last_frame_duration; i&=0x3ff;
+      }
+      if (left_held) {
+	  i-=ROTATE_STEP*last_frame_duration; i&=0x3ff;
+      }
+      if (back_held) {
+	py-=MulCos(i,STEP*last_frame_duration);
+	px-=MulSin(i,STEP*last_frame_duration);
+	
+	if (IsWall(px>>8,py>>8)) {
+	  py+=MulCos(i,STEP*last_frame_duration);	    
+	  px+=MulSin(i,STEP*last_frame_duration);
+	}
+      }
+      if (forward_held) {
+	py+=MulCos(i,STEP*last_frame_duration);	    
+	px+=MulSin(i,STEP*last_frame_duration);
+	
+	if (IsWall(px>>8,py>>8)) {
+	  py-=MulCos(i,STEP*last_frame_duration);	    
+	  px-=MulSin(i,STEP*last_frame_duration);
+	}
+      }
+	  
+	  
+
+      
       i&=0x3FF;      
 
+      // Draw frame and keep track of how long it took
+      // Use CIA RTC to time it, so we measure in 10ths of seconds
+      last_frame_start=*(uint16_t *)0xDC08;
       if (dma_draw)
 	TraceFrameFast(px,py,i);
       else
 	TraceFrame(px,py,i);
-      
-      // XXX wait for key between frames
-      while(!PEEK(0xD610)) continue;
+      last_frame_duration=(*(uint16_t *)0xDC08) - last_frame_start;
+      last_frame_duration&=0xff;
+      while (last_frame_duration>9) last_frame_duration+=10;
+
+      snprintf(m,80,"last frame took $%04x jiffies: %d,%d,%d,%d\n",last_frame_duration,
+	       left_held,right_held,forward_held,back_held);
+      debug_msg(m);
     }
 }
