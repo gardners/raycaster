@@ -69,12 +69,10 @@ void graphics_mode(void)
   lfill(0x50000,0x00,0x8000);
   lfill(0x58000,0x00,0x8000);
 
-  // Set up grey-scale palette
-  for(i=0;i<256;i++) {
-    POKE(0xD100+i,(i>>4)+((i&7)<<4));
-    POKE(0xD200+i,(i>>4)+((i&7)<<4));
-    POKE(0xD300+i,(i>>4)+((i&7)<<4));
-  }  
+  // Set up palette from texture data
+  lcopy(&colours[0x010],0xffd3110L,0xf0);
+  lcopy(&colours[0x110],0xffd3210L,0xf0);
+  lcopy(&colours[0x210],0xffd3310L,0xf0);
   
   // 16-bit text mode, full-colour text for high chars
   POKE(0xD054,0x05);
