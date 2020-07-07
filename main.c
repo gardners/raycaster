@@ -324,9 +324,10 @@ void setup_level(uint8_t difficulty,uint32_t seed)
     }
 
   // Make the exit square look like sky
-  maze_set_cell(size-2,size-1,0x8000);
-  maze_set_cell(size-1,size-1,0x8000);
-  maze_set_cell(size-1,size-2,0x8000);
+  if (!(maze_get_cell(size-2,size-3)&0x8000))
+    maze_set_cell(size-2,size-1,0x8000);
+  else
+    maze_set_cell(size-1,size-2,0x8000);
   
   // Start in middle of start square, looking down the maze
   px=0x0180; py=0x180;
