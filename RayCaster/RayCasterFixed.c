@@ -235,7 +235,7 @@ void CalculateDistance(
                 tileY += tileStepY;
                 if(IsWall(tileX, tileY))
                 {
-		  *texture_num=maze_get_cell(tileX,tileY);
+		  *texture_num=(maze_get_cell(tileX,tileY)&0xff);
 		  goto HorizontalHit;
                 }
             }
@@ -302,7 +302,8 @@ void CalculateDistance(
                 tileX += tileStepX;
                 if(IsWall(tileX, tileY))
                 {
-                    goto VerticalHit;
+		  *texture_num=(maze_get_cell(tileX,tileY)&0xff);
+		  goto VerticalHit;
                 }
                 interceptY += stepY;
             }
@@ -311,7 +312,8 @@ void CalculateDistance(
                 tileY += tileStepY;
                 if(IsWall(tileX, tileY))
                 {
-                    goto HorizontalHit;
+		  *texture_num=(maze_get_cell(tileX,tileY)&0xff);
+		  goto HorizontalHit;
                 }
                 interceptX += stepX;
             }
@@ -600,9 +602,8 @@ void TraceFrameFast(uint16_t playerX, uint16_t playerY, uint16_t playerDirection
       //      POKE(0xD020,0x80);
       Trace(x, &sso, &tn, &tc, &tso, &tst,&texture_num);
 
-      if (texture_num>=NUM_TEXTURES) texture_num=0;
+      if (texture_num>=NUM_TEXTURES) texture_num=9;
       texture_offset=texture_num<<12;
-      texture_offset=9<<12;
       
 	//	if (sso>2*HORIZON_HEIGHT) sso=2*HORIZON_HEIGHT;
 

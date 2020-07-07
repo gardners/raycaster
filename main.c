@@ -305,12 +305,44 @@ void mapsprite_set_pixel(uint8_t x,uint8_t y)
 #endif
 }
 
+int pa;
+uint16_t px=1<<8;
+uint16_t py=1<<8;
+
+void setup_level(uint8_t difficulty,uint32_t seed)
+{
+  // Generate a maze
+  // Must have odd size, so walls an corridors can co-exist.
+
+  uint8_t size=3+difficulty*2;
+  
+  generate_maze(size,size,seed);
+  for(px=0;px<40;px++)
+    for(py=0;py<40;py++) {
+      if (maze_get_cell(px,py)) plot_pixel(px,py,0x80);
+      else plot_pixel(px,py,0x00);
+    }
+
+  // Make the exit square look like sky
+  maze_set_cell(size-2,size-1,0x8000);
+  maze_set_cell(size-1,size-1,0x8000);
+  maze_set_cell(size-1,size-2,0x8000);
+  
+  // Start in middle of start square, looking down the maze
+  px=0x0180; py=0x180;
+  if (!IsWall(1,2)) i=0x000;
+  else i=0x100;
+
+  // Erase map
+  lfill(0x400,0x00,512);
+  
+}
+
+
+
 void main(void)
 {
   char dma_draw=1;
-  int i;
-  uint16_t px=1<<8;
-  uint16_t py=1<<8;
 
     asm ( "sei" );
 
@@ -321,7 +353,9 @@ void main(void)
 
   while(PEEK(0xD610)) POKE(0xD610,0);
 
+  POKE(0xD011,0);
   unpack_textures(packed_textures);
+  POKE(0xD011,0x1B);
   
   POKE(0xD020,0);
   POKE(0xD021,0);
@@ -330,19 +364,7 @@ void main(void)
 
   setup_multiplier();
 
-  // Generate a maze
-  // Must have odd size, so walls an corridors can co-exist.
-  generate_maze(15,15,1);
-  for(px=0;px<40;px++)
-    for(py=0;py<40;py++) {
-      if (maze_get_cell(px,py)) plot_pixel(px,py,0x80);
-      else plot_pixel(px,py,0x00);
-    }
-
-  // Start in middle of start square, looking down the maze
-  px=0x0180; py=0x180;
-  if (!IsWall(1,2)) i=0x000;
-  else i=0x100;
+  setup_level(1,1);
 
   // Set up sprite for showing map discovery
   // It sits in the upper right of the screen
@@ -415,8 +437,8 @@ void main(void)
       
       if (PEEK(0xD610)) {
 	switch(PEEK(0xD610)) {
-	case 0x31: i-=1; break;
-	case 0x32: i+=1; break;
+	case 0x31: pa-=1; break;
+	case 0x32: pa+=1; break;
 	case 0xF1: dma_draw^=1; break;
 	  // Rotate left/right
 	case 0xF3: diag_mode^=1;
@@ -445,43 +467,40 @@ void main(void)
       }
 
       if (right_held) {
-	  i+=ROTATE_STEP*last_frame_duration; i&=0x3ff;
+	  pa+=ROTATE_STEP*last_frame_duration; pa&=0x3ff;
       }
       if (left_held) {
-	  i-=ROTATE_STEP*last_frame_duration; i&=0x3ff;
+	  pa-=ROTATE_STEP*last_frame_duration; pa&=0x3ff;
       }
       if (back_held) {
-	py-=MulCos(i,STEP*last_frame_duration);
-	px-=MulSin(i,STEP*last_frame_duration);
+	py-=MulCos(pa,STEP*last_frame_duration);
+	px-=MulSin(pa,STEP*last_frame_duration);
 	
 	if (IsWall(px>>8,py>>8)) {
-	  py+=MulCos(i,STEP*last_frame_duration);	    
-	  px+=MulSin(i,STEP*last_frame_duration);
+	  py+=MulCos(pa,STEP*last_frame_duration);	    
+	  px+=MulSin(pa,STEP*last_frame_duration);
 	}
       }
       if (forward_held) {
-	py+=MulCos(i,STEP*last_frame_duration);	    
-	px+=MulSin(i,STEP*last_frame_duration);
+	py+=MulCos(pa,STEP*last_frame_duration);	    
+	px+=MulSin(pa,STEP*last_frame_duration);
 
 	if (IsWall(px>>8,py>>8)) {
-	  py-=MulCos(i,STEP*last_frame_duration);
-	  px-=MulSin(i,STEP*last_frame_duration);
+	  py-=MulCos(pa,STEP*last_frame_duration);
+	  px-=MulSin(pa,STEP*last_frame_duration);
 	}
       }
-	  
-	  
-
       
-      i&=0x3FF;      
+      pa&=0x3FF;      
 
       // Draw frame and keep track of how long it took
       // Use CIA RTC to time it, so we measure in 10ths of seconds
       last_frame_start=*(uint16_t *)0xDC08;
       if (dma_draw)
-	TraceFrameFast(px,py,i);
+	TraceFrameFast(px,py,pa);
 #if 0
       else
-	TraceFrame(px,py,i);
+	TraceFrame(px,py,pa);
 #endif
       last_frame_duration=(*(uint16_t *)0xDC08) - last_frame_start;
       last_frame_duration&=0xff;
