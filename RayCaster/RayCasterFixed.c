@@ -21,9 +21,9 @@ int16_t  _playerA;
 uint8_t  _viewQuarter;
 uint8_t  _viewAngle;
 
-uint16_t texture_offset=0;
+uint32_t texture_offset=0;
 uint8_t texture_num=0;
-
+uint16_t texture_count=0;
 
 extern char diag_mode;
 
@@ -487,7 +487,7 @@ void TraceFrame(uint16_t playerX, uint16_t playerY, uint16_t playerDirection)
 
       Trace(x, &sso, &tn, &tc, &tso, &tst,&texture_num);
 
-      if (texture_num>=NUM_TEXTURES) texture_num=0;
+      if (texture_num>=texture_count) texture_num=0;
       texture_offset=texture_num<<12;
       
         tx = (tc >> 2);
@@ -602,8 +602,8 @@ void TraceFrameFast(uint16_t playerX, uint16_t playerY, uint16_t playerDirection
       //      POKE(0xD020,0x80);
       Trace(x, &sso, &tn, &tc, &tso, &tst,&texture_num);
 
-      if (texture_num>=NUM_TEXTURES) texture_num=9;
-      texture_offset=texture_num<<12;
+      if (texture_num>=texture_count) texture_num=9;
+      texture_offset=0x300+texture_num<<12;
       
 	//	if (sso>2*HORIZON_HEIGHT) sso=2*HORIZON_HEIGHT;
 

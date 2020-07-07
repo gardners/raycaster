@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
+#include <cbm.h>
 
 #include <hal.h>
 #include <memory.h>
@@ -338,7 +339,67 @@ void setup_level(uint8_t difficulty,uint32_t seed)
   
 }
 
+// From: https://retrocomputing.stackexchange.com/questions/8253/how-to-read-disk-files-using-cbm-specific-functions-in-cc65-with-proper-error-ch
+unsigned char kernel_getin(void *ptr, unsigned char size)
+{
+  unsigned char * data = (unsigned char *)ptr;
+  unsigned char i;
+  unsigned char st=0;
+  
+  for(i=0; i<size; ++i)
+    {
+      st = cbm_k_readst();
+      if (st) {
+	break;
+      }
+      data[i] = cbm_k_getin();
+      POKE(0x0500+i,data[i]);
+    }
+  data[i] = '\0';
+  size = i;
+  return st;
+}
 
+extern uint32_t texture_offset;
+extern uint8_t texture_num;
+extern uint16_t texture_count;
+
+
+uint8_t disk_buffer[256];
+uint16_t load_textures(unsigned char * file_name)
+{
+  cbm_k_setlfs(3,8,0);
+  cbm_k_setnam(file_name);
+  
+  cbm_k_open();
+  if(!cbm_k_readst()) 
+    {
+      _filetype = 'p';
+
+      printf("Got file open, st=$%02x\n",cbm_k_readst());
+      
+      cbm_k_chkin(3);
+      texture_offset=0;
+      
+      while(!cbm_k_readst()) {
+	kernel_getin(disk_buffer,255);
+	lcopy(disk_buffer,0x8000000+texture_offset,255);
+	texture_offset+=255;
+	// Border activity while loading
+	POKE(0xD020,(PEEK(0xD020)+1)&0xf);
+      }
+      
+    }
+  else
+    {
+      printf("File could not be opened\n\r");
+      texture_count=0;
+      return 0;
+    }
+
+  texture_count=texture_offset>>12;
+  return texture_offset>>12;
+}
 
 void main(void)
 {
@@ -355,7 +416,17 @@ void main(void)
 
   POKE(0xD020,0);
   POKE(0xD021,0);
+
+  // Clear screen
+  printf("%c",0x93);
   
+  load_textures("textures.bin");
+  printf("Loaded %d textures.\n",texture_count);
+  
+  // M65 IO again after using DOS, as DOS drops us back to C64 IO
+  POKE(0xD02F,0x47);
+  POKE(0xD02F,0x53);
+
   graphics_mode();
 
   setup_multiplier();

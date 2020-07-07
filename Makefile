@@ -27,7 +27,11 @@ CBMCONVERT=	cbmconvert/cbmconvert
 
 SRCDIR=	src
 
-all:	raycaster.prg
+all:	WANDER.D81
+
+WANDER.D81: raycaster.prg textures.bin
+	rm WANDER.D81
+	cbmconvert -D8 WANDER.D81 raycaster.prg textures.bin
 
 $(SDCARD_DIR)/FREEZER.M65:
 	git submodule init
@@ -93,7 +97,7 @@ raycaster.prg:       $(RAYCASTERSRCS) $(RAYCASTERHDRS)
 pngtotextures:	pngtotextures.c Makefile
 	$(CC) $(COPT) -I/usr/local/include -L/usr/local/lib -o pngtotextures pngtotextures.c -lpng
 
-textures.c:	pngtotextures assets/0*.png Makefile
+textures.bin:	pngtotextures assets/0*.png Makefile
 	./pngtotextures assets/0*.png > textures.c
 
 /usr/bin/convert: 
