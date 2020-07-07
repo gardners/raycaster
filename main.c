@@ -11,6 +11,7 @@
 #include <random.h>
 #include "textures.h"
 
+#define SCREEN_ADDR 0xE000L
 #define TEXTURE_ADDRESS 0x8000000L
 
 // These are the step per jiffy. Multiply by 10 for movement per second
@@ -218,17 +219,17 @@ void graphics_mode(void)
   // Draw 80 chars per row
   POKE(0xD05E,80);
   // Put 4000 byte screen at $C000
-  POKE(0xD060,0x00);
-  POKE(0xD061,0xC0);
-  POKE(0xD062,0x00);
+  POKE(0xD060,SCREEN_ADDR&0xff);
+  POKE(0xD061,SCREEN_ADDR>>8);
+  POKE(0xD062,SCREEN_ADDR>>16);
 
   // Layout screen so that graphics data comes from $40000 -- $5FFFF
 
   i=0x40000/0x40;
   for(a=0;a<80;a++)
     for(b=0;b<25;b++) {
-      POKE(0xC000+b*160+a*2+0,i&0xff);
-      POKE(0xC000+b*160+a*2+1,i>>8);
+      POKE(SCREEN_ADDR+b*160+a*2+0,i&0xff);
+      POKE(SCREEN_ADDR+b*160+a*2+1,i>>8);
 
       i++;
     }
@@ -241,14 +242,14 @@ void graphics_mode(void)
   for(b=0;b<25;b++) {
     // Make overlay full of spaces
     for(a=40;a<80;a++) {
-      POKE(0xC000+b*160+a*2+0,0x20);
-      POKE(0xC000+b*160+a*2+1,0x00);      
+      POKE(SCREEN_ADDR+b*160+a*2+0,0x20);
+      POKE(SCREEN_ADDR+b*160+a*2+1,0x00);      
     }
     // Put the GOTO tokens in to move back to the 2nd char position of the chargen row
     // (We can't go back to the start, because we have used one of the 40 extra columns
     // for the goto token).
-    POKE(0xC000+b*160+40*2+0,0x07);
-    POKE(0xC000+b*160+40*2+1,0x00);
+    POKE(SCREEN_ADDR+b*160+40*2+0,0x07);
+    POKE(SCREEN_ADDR+b*160+40*2+1,0x00);
     // And activate it in colour RAM
     lpoke(0xFF80000L+b*160+40*2+0,0x90);
     lpoke(0xFF80000L+b*160+40*2+1,0x00);
