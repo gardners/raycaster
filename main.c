@@ -236,6 +236,25 @@ void graphics_mode(void)
   // Clear colour RAM, 8-bits per pixel
   lfill(0xff80000L,0x00,80*25*2);
 
+  // Now setup raster buffer text over write to give us 39 columns of text
+  // as overlay.
+  for(b=0;b<25;b++) {
+    // Make overlay full of spaces
+    for(a=40;a<80;a++) {
+      POKE(0xC000+b*160+a*2+0,0x20);
+      POKE(0xC000+b*160+a*2+1,0x00);      
+    }
+    // Put the GOTO tokens in to move back to the 2nd char position of the chargen row
+    // (We can't go back to the start, because we have used one of the 40 extra columns
+    // for the goto token).
+    POKE(0xC000+b*160+40*2+0,0x07);
+    POKE(0xC000+b*160+40*2+1,0x00);
+    // And activate it in colour RAM
+    lpoke(0xFF80000L+b*160+40*2+0,0x90);
+    lpoke(0xFF80000L+b*160+40*2+1,0x00);
+  }
+  
+  
   POKE(0xD020,0);
   POKE(0xD021,0);
 }
@@ -313,7 +332,7 @@ void main(void)
 
   // Generate a maze
   // Must have odd size, so walls an corridors can co-exist.
-  generate_maze(63,63,1);
+  generate_maze(15,15,1);
   for(px=0;px<40;px++)
     for(py=0;py<40;py++) {
       if (maze_get_cell(px,py)) plot_pixel(px,py,0x80);
