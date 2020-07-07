@@ -8,10 +8,9 @@
 #include <fileio.h>
 #include <debug.h>
 #include <random.h>
-
 #include "textures.h"
 
-#define TEXTURE_ADDRESS 0x12000L
+#define TEXTURE_ADDRESS 0x8000000L
 
 // These are the step per jiffy. Multiply by 10 for movement per second
 // 256 = one whole square
@@ -195,9 +194,9 @@ void graphics_mode(void)
   lfill(0x48000L,0x00,0x8000);
 
   // Set up palette from texture data
-  lcopy(&colours[0x010],0xffd3110L,0xf0);
-  lcopy(&colours[0x110],0xffd3210L,0xf0);
-  lcopy(&colours[0x210],0xffd3310L,0xf0);
+  lcopy(0x8000010,0xffd3110L,0xf0);
+  lcopy(0x8000110,0xffd3210L,0xf0);
+  lcopy(0x8000210,0xffd3310L,0xf0);
   
   // 16-bit text mode, full-colour text for high chars
   POKE(0xD054,0x05);
@@ -354,10 +353,6 @@ void main(void)
 
   while(PEEK(0xD610)) POKE(0xD610,0);
 
-  POKE(0xD011,0);
-  unpack_textures(packed_textures);
-  POKE(0xD011,0x1B);
-  
   POKE(0xD020,0);
   POKE(0xD021,0);
   

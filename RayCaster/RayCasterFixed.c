@@ -1,12 +1,12 @@
 // fixed-point implementation
 
 #include "RayCasterFixed.h"
-#include "../textures.h"
 
 #define LOOKUP_STORAGE extern
 #include "RayCasterTables.h"
+#include "../textures.h"
 
-#define TEXTURE_ADDRESS 0x12000
+#define TEXTURE_ADDRESS 0x8000000
 
 #include "debug.h"
 

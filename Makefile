@@ -83,8 +83,7 @@ RAYCASTERHDRS=	RayCaster/RayCasterFixed.h \
 
 RAYCASTERSRCS=	RayCaster/RayCasterFixed.c \
 		main.c \
-		mazegen.c \
-		textures.c
+		mazegen.c
 
 raycaster.prg:       $(RAYCASTERSRCS) $(RAYCASTERHDRS)
 #	git submodule init
