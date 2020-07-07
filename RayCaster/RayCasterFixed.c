@@ -6,7 +6,7 @@
 #include "RayCasterTables.h"
 #include "../textures.h"
 
-#define TEXTURE_ADDRESS 0x8000000
+#define TEXTURE_ADDRESS 0x8000300
 
 #include "debug.h"
 
@@ -477,61 +477,6 @@ uint32_t* lb;
 int16_t tx,ws,ty,tv;
 int x,y;
 
-#if 0
-void TraceFrame(uint16_t playerX, uint16_t playerY, uint16_t playerDirection)
-{
-    Start(playerX, playerY, playerDirection);
-
-    for(x = 0; x < SCREEN_WIDTH; x++)
-    {
-
-      Trace(x, &sso, &tn, &tc, &tso, &tst,&texture_num);
-
-      if (texture_num>=texture_count) texture_num=0;
-      texture_offset=texture_num<<12;
-      
-        tx = (tc >> 2);
-        ws = HORIZON_HEIGHT - sso;
-        if(ws < 0)
-        {
-	  // Texture piece is too tall, so clip it.
-	  // But we also need to centre it
-	  
-            ws  = 0;
-            sso = HORIZON_HEIGHT;
-        }
-        to = tso;
-        ts = tst;
-
-        for(y = 0; y < ws; y++)
-        {
-            plot_pixel(x,y,96 + (HORIZON_HEIGHT - y));
-        }
-
-        for(y = 0; y < sso * 2; y++)
-        {
-            // paint texture pixel
-            ty = (to >> 10);
-            tv = textures[texture_offset+(ty << 6) + tx];
-
-            to += ts;
-
-            if(tn == 1 && tv > 0)
-            {
-                // dark wall
-                tv >>= 1;
-            }
-            plot_pixel(x,y+ws,tv);
-        }
-
-        for(y = 0; y < ws; y++)
-        {
-            plot_pixel(x,y+ws+sso*2,96 + (HORIZON_HEIGHT - (ws - y)));
-        }
-    }
-}
-#endif
-
 uint8_t dlist[29]={
   0x0a, // F018A style job
   0x80,0x00,0x81,0x00, // src and dst both in first 1MB
@@ -569,10 +514,11 @@ void dma_stepped_copy(uint32_t src, uint32_t dst,uint16_t count,
   dlist[20]=count>>8;
   dlist[21]=src&0xff;
   dlist[22]=src>>8;
-  dlist[23]=src>>16;
+  dlist[23]=(src>>16)&0xf;
+  dlist[2]=src>>20;
   dlist[24]=dst&0xff;
   dlist[25]=dst>>8;
-  dlist[26]=dst>>16L;
+  dlist[26]=(dst>>16L)&0xf;
 
   POKE(0xD702,0x00);
   POKE(0xD701,(uint16_t)(&dlist)>>8);
@@ -603,7 +549,7 @@ void TraceFrameFast(uint16_t playerX, uint16_t playerY, uint16_t playerDirection
       Trace(x, &sso, &tn, &tc, &tso, &tst,&texture_num);
 
       if (texture_num>=texture_count) texture_num=9;
-      texture_offset=0x300+texture_num<<12;
+      texture_offset=((uint32_t)texture_num)<<12L;
       
 	//	if (sso>2*HORIZON_HEIGHT) sso=2*HORIZON_HEIGHT;
 
