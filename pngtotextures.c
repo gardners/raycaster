@@ -162,7 +162,7 @@ unsigned char nyblswap(unsigned char in)
 uint8_t recent_bytes[14]={0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
 uint8_t recent_copy_bytes[14]={0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
 
-uint8_t texture_data[128*1024];
+uint8_t texture_data[1024*1024];
 int texture_offset=0;
 uint8_t packed_data[1024*1024];
 int packed_len=0;
@@ -436,7 +436,7 @@ int main(int argc, char **argv)
 
   for(int i=1;i<argc;i++)
     {
-      if (texture_offset>=(128*1024)) {
+      if (texture_offset>=(1024*1024)) {
 	fprintf(stderr,"Too many textures.\n");
 	exit(-1);
       }
@@ -517,6 +517,22 @@ int main(int argc, char **argv)
     fclose(f);
   }
 
+  FILE *tf=fopen("textures.bin","wb");
+  if (tf) {
+    // Palette data
+    uint8_t pal[3*256];
+    for(int i=0;i<256;i++) {
+    pal[0x000+i]=(palette[i].r>>4)|((palette[i].r<<4)&0xe0);
+    pal[0x100+i]=(palette[i].g>>4)|((palette[i].g<<4)&0xf0);
+    pal[0x200+i]=(palette[i].b>>4)|((palette[i].b<<4)&0xf0);
+  }
+    fwrite(pal,768,1,tf);
+    
+    // Then texture data
+    fwrite(texture_data,texture_offset,1,tf);
+    fclose(tf);
+  }
+  
   return 0;  
 }
 
