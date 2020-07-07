@@ -30,6 +30,8 @@ void generate_maze(uint8_t width, uint8_t height,uint32_t seed);
 uint16_t maze_get_cell(uint8_t x,uint8_t y);
 void maze_set_cell(uint8_t x,uint8_t y,uint16_t v);
 
+uint8_t maze_size=7;
+uint32_t maze_seed=1;
 
 unsigned short i,j;
 unsigned char a,b,c,d;
@@ -187,6 +189,20 @@ void text80_mode(void)
   POKE(0xD30F,0x00);
 }
 
+// Set horizontal position of the overlay text
+void overlaytext_line_x_position(uint8_t row,uint16_t x_pos)
+{
+  POKE(SCREEN_ADDR+row*160+40*2+0,x_pos);
+  POKE(SCREEN_ADDR+row*160+40*2+1,x_pos>>8);
+}
+
+void overlaytext_clear_line(uint8_t row)
+{
+  for(a=41;a<80;a++) {
+    POKE(SCREEN_ADDR+row*160+a*2+0,0x20);
+    POKE(SCREEN_ADDR+row*160+a*2+1,0x00);      
+  }
+}
 
 void graphics_mode(void)
 {
@@ -241,15 +257,11 @@ void graphics_mode(void)
   // as overlay.
   for(b=0;b<25;b++) {
     // Make overlay full of spaces
-    for(a=40;a<80;a++) {
-      POKE(SCREEN_ADDR+b*160+a*2+0,0x20);
-      POKE(SCREEN_ADDR+b*160+a*2+1,0x00);      
-    }
+    overlaytext_clear_line(b);
     // Put the GOTO tokens in to move back to the 2nd char position of the chargen row
     // (We can't go back to the start, because we have used one of the 40 extra columns
     // for the goto token).
-    POKE(SCREEN_ADDR+b*160+40*2+0,0x07);
-    POKE(SCREEN_ADDR+b*160+40*2+1,0x00);
+    overlaytext_line_x_position(b,0x0007);
     // And activate it in colour RAM
     lpoke(0xFF80000L+b*160+40*2+0,0x90);
     lpoke(0xFF80000L+b*160+40*2+1,0x00);
@@ -272,19 +284,22 @@ void plot_pixel(unsigned long x,unsigned char y,unsigned char colour)
 }
 
 uint8_t char_code;
+uint8_t rev_mode=0;
 
-void print_text80(unsigned char x,unsigned char y,unsigned char colour,char *msg)
-{
-  pixel_addr=0xB000+x+y*80;
+void print_overlaytext(unsigned char x,unsigned char y,unsigned char colour,char *msg)
+{  
+  if (colour&0x10) rev_mode=0x80; else rev_mode=0;
+  
+  pixel_addr=SCREEN_ADDR+x*2+y*160+82;
   while(*msg) {
     char_code=*msg;
     if (*msg>=0xc0&&*msg<=0xe0) char_code=*msg-0x80;
     else if (*msg>=0x40&&*msg<=0x60) char_code=*msg-0x40;
     else if (*msg>=0x60&&*msg<=0x7A) char_code=*msg-0x20;
-    POKE(pixel_addr+0,char_code);
-    lpoke(0xff80000L-0xB000+pixel_addr,colour);
+    POKE(pixel_addr+0,char_code|rev_mode);
+    lpoke(0xff80000L-SCREEN_ADDR+pixel_addr+1,colour);
     msg++;
-    pixel_addr+=1;
+    pixel_addr+=2;        
   }
 }
 
@@ -310,20 +325,20 @@ int pa;
 uint16_t px=1<<8;
 uint16_t py=1<<8;
 
-void setup_level(uint8_t difficulty,uint32_t seed)
+void setup_level(uint8_t size,uint32_t seed)
 {
   // Generate a maze
   // Must have odd size, so walls an corridors can co-exist.
-
-  uint8_t size=3+difficulty*2;
   
   generate_maze(size,size,seed);
+#if 0
   for(px=0;px<40;px++)
     for(py=0;py<40;py++) {
       if (maze_get_cell(px,py)) plot_pixel(px,py,0x80);
       else plot_pixel(px,py,0x00);
     }
-
+#endif
+  
   // Make the exit square look like sky
   if (!(maze_get_cell(size-2,size-3)&0x8000))
     maze_set_cell(size-2,size-1,0x8000);
@@ -335,7 +350,7 @@ void setup_level(uint8_t difficulty,uint32_t seed)
   if (!IsWall(1,2)) i=0x000;
   else i=0x100;
 
-  // Erase map
+  // Erase map sprite
   lfill(0x400,0x00,512);
   
 }
@@ -401,6 +416,8 @@ uint16_t load_textures(unsigned char * file_name)
   texture_count=texture_offset>>12;
   return texture_offset>>12;
 }
+
+uint8_t game_setup=1;
 
 void main(void)
 {
@@ -469,9 +486,59 @@ void main(void)
   POKE(0x07F8,0x0380/0x40);
 
   //  while(1) POKE(0xD020,PEEK(0xD012));
+
+  // Draw an initial maze frame
+  TraceFrameFast(px,py,pa);
+
+  // Start in game setup mode
+  game_setup=1;
   
   while(1)
     {
+
+      if (game_setup) {
+	POKE(0xD015,0);
+
+	for(b=0;b<25;b++) overlaytext_line_x_position(b,0x0007);
+	
+	print_overlaytext(8,5,0x10,"ESCAPE FROM WONDERLAND");
+	snprintf(msg,20,"Maze Size: %d  ",maze_size);
+	print_overlaytext(10,8,0x00,msg);
+	snprintf(msg,22,"Maze Seed: %-9ld      ",maze_seed);
+	print_overlaytext(10,10,0x00,msg);
+	snprintf(msg,22,"Press RETURN to start");
+	print_overlaytext(8,20,0x10,msg);
+
+	if (PEEK(0xD610)) {
+	  switch(PEEK(0xD610)) {
+	  case 0x11: maze_seed--; break;
+	  case 0x91: maze_seed++; break;
+	  case 0x1d: maze_size+=2; if (maze_size>63) maze_size=63; break;
+	  case 0x9d: maze_size-=2; if (maze_size<5) maze_size=5; break;
+	  case 0x0d:
+	    // Start game
+	    game_setup=0;
+	    setup_level(maze_size,maze_seed);
+	    px=0x180; py=0x180; pa=0;
+	    
+	    // Slide text out to the right off the screen
+	    for(i=7;i<330;i+=8) {
+	      for(b=5;b<25;b++)
+		overlaytext_line_x_position(b,i);
+	      while(PEEK(0xD012)!=0xfe) continue;
+	    }
+	    for(b=0;b<25;b++)
+	      overlaytext_clear_line(b);
+	    // MAP sprites visible
+	    POKE(0xD015,0x91);
+	  }
+	  POKE(0xD610,0);
+	}
+	
+	continue;
+      }
+
+      
       
       // Update map sprite based on where we are
       if (px<0x100) a=0; else a=(px>>8);
@@ -505,6 +572,8 @@ void main(void)
       
       if (PEEK(0xD610)) {
 	switch(PEEK(0xD610)) {
+	case 0x03:
+	  game_setup=1; break;
 	case 0x31: pa-=1; break;
 	case 0x32: pa+=1; break;
 	case 0xF1: dma_draw^=1; break;

@@ -20,7 +20,7 @@ void maze_set_cell(uint8_t x,uint8_t y,uint16_t v)
 {
   lpoke(MAZE_MEM+(((uint16_t)x)<<1)+(((uint16_t)y)<<9),v&0xff);
   lpoke(MAZE_MEM+(((uint16_t)x)<<1)+(((uint16_t)y)<<9)+1,v>>8);
-  plot_pixel(x,y,v?0x80:0);
+  //  plot_pixel(x,y,v?0x80:0);
 }
 
 uint16_t maze_get_cell(uint8_t x,uint8_t y)
