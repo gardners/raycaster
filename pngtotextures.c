@@ -139,7 +139,7 @@ int palette_lookup(int r,int g, int b)
   
   // new colour
   if (palette_index>255) {
-    fprintf(stderr,"Too many colours in image: Must be not more than 16.\n");
+    fprintf(stderr,"Too many colours in image: Must be not more than 240 in all textures combined.\n");
     exit(-1);
   }
   
