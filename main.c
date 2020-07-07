@@ -365,7 +365,7 @@ void main(void)
 
   setup_multiplier();
 
-  setup_level(1,1);
+  setup_level(5,1);
 
   // Set up sprite for showing map discovery
   // It sits in the upper right of the screen
