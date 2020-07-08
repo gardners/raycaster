@@ -525,12 +525,26 @@ void main(void)
 	print_overlaytext(8,20,0x10,msg);
 
 	// Update map sprite positions based on maze size
-	if (maze_size>8) {
-	  POKE(0xD00F,maze_size-8);
-	  POKE(0xD009,maze_size-8);
+	if (maze_size>11) {
+
+	  POKE(0x07FC,0x400/0x40);
+	  POKE(0x07FF,0x600/0x40);
+	  
+	  POKE(0xD00F,maze_size-13);
+	  POKE(0xD009,maze_size-13);
+
+	  POKE(0xD056,63); // extended height sprites are 63 px tall
+	  
 	} else {
-	  POKE(0xD00F,0);
-	  POKE(0xD009,0);
+
+	  // Cut the top 16 lines of sprite data
+	  POKE(0x07FC,0x480/0x40);
+	  POKE(0x07FF,0x680/0x40);
+	  
+	  POKE(0xD00F,maze_size);
+	  POKE(0xD009,maze_size);
+
+	  POKE(0xD056,63-16); // extended height sprites are 63 px tall
 	}
 	POKE(0xD00E,0x18+63-maze_size);
 	POKE(0xD008,0x18+63-maze_size);
@@ -578,9 +592,13 @@ void main(void)
 
       // And set our pulsing location sprite in the right place
       POKE(0xD000,0x18+(63-maze_size)+a);
-      if (maze_size>8) POKE(0xD001,maze_size-8+(63-b));
-      else POKE(0xD001,0+(63-b));
-      POKE(0xD027,PEEK(0xD027)^0x80);
+      if (maze_size>11)
+	POKE(0xD001,maze_size-13+(63-b));
+      else
+	POKE(0xD001,maze_size+(47-b));
+
+      // Toggle colour of our little square
+      POKE(0xD027,PEEK(0xD027)^0x01);
 
       
       POKE(0xD614,0x01);
