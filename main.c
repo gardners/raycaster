@@ -442,7 +442,13 @@ uint8_t map_x_current=0;
 void generate_idle_map(void)
 {
   setup_level(13,1);
-  px=0x780; px=0x780; pa=0;  
+
+  // Carve out an area around us for the rotating camera view
+  for(px=6;px<9;px++)
+    for(py=6;py<9;py++)
+      maze_set_cell(px,py,0);
+
+  px=0x780; py=0x780; pa=0x100;  
 }
 
 void main(void)
@@ -550,9 +556,9 @@ void main(void)
 	snprintf(msg,20,"Maze Size: %d  ",maze_size);
 	print_overlaytext(13,8,0x00,msg);
 	snprintf(msg,22,"Maze Seed: %08ld      ",maze_seed);
-	print_overlaytext(10,10,0x00,msg);
+	print_overlaytext(9,10,0x00,msg);
 	snprintf(msg,22,"Press RETURN to start");
-	print_overlaytext(8,20,0x10,msg);
+	print_overlaytext(8,23,0x10,msg);
 
 	// Update map sprite positions based on maze size
 	if (maze_size>11) {
