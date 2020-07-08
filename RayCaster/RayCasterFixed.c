@@ -4,7 +4,6 @@
 
 #define LOOKUP_STORAGE extern
 #include "RayCasterTables.h"
-#include "../textures.h"
 
 #define TEXTURE_ADDRESS 0x8000300
 
@@ -548,7 +547,7 @@ void TraceFrameFast(uint16_t playerX, uint16_t playerY, uint16_t playerDirection
       //      POKE(0xD020,0x80);
       Trace(x, &sso, &tn, &tc, &tso, &tst,&texture_num);
 
-      if (texture_num>=texture_count) texture_num=9;
+      if (texture_num>=texture_count) texture_num=10;
       texture_offset=((uint32_t)texture_num)<<12L;
       
 	//	if (sso>2*HORIZON_HEIGHT) sso=2*HORIZON_HEIGHT;

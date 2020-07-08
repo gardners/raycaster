@@ -9,7 +9,6 @@
 #include <fileio.h>
 #include <debug.h>
 #include <random.h>
-#include "textures.h"
 
 #define SCREEN_ADDR 0xE000L
 #define TEXTURE_ADDRESS 0x8000000L
@@ -369,7 +368,6 @@ unsigned char kernel_getin(void *ptr, unsigned char size)
 	break;
       }
       data[i] = cbm_k_getin();
-      POKE(0x0500+i,data[i]);
     }
   data[i] = '\0';
   size = i;
@@ -379,7 +377,6 @@ unsigned char kernel_getin(void *ptr, unsigned char size)
 extern uint32_t texture_offset;
 extern uint8_t texture_num;
 extern uint16_t texture_count;
-
 
 uint8_t disk_buffer[256];
 uint16_t load_textures(unsigned char * file_name)
@@ -392,17 +389,25 @@ uint16_t load_textures(unsigned char * file_name)
     {
       _filetype = 'p';
 
-      printf("Got file open, st=$%02x\n",cbm_k_readst());
+      printf("Loading textures");
       
       cbm_k_chkin(3);
       texture_offset=0;
       
       while(!cbm_k_readst()) {
-	kernel_getin(disk_buffer,255);
-	lcopy(disk_buffer,0x8000000+texture_offset,255);
-	texture_offset+=255;
+	// Use 128 byte reads so our DMA jobs never cross a 64KB boundary
+	// (which should be fine, but something fishy is going on. Maybe
+	// more a hyperram bug than DMAgic bug?)
+	kernel_getin(disk_buffer,128);
+	lcopy(disk_buffer,0x8000000L+texture_offset,128);
+	texture_offset+=128;
 	// Border activity while loading
 	POKE(0xD020,(PEEK(0xD020)+1)&0xf);
+	if (!(texture_offset&0xfff)) {
+	  // And show a . every texture
+	  printf(".");
+	  cbm_k_chkin(3);
+	}
       }
       
     }

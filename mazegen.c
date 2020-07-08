@@ -58,7 +58,9 @@ void divide_maze(uint8_t x1,uint8_t y1,uint8_t x2,uint8_t y2)
 
   if (!n) {
     // Split horizontally
-    for(n=x1;n<=x2;n++) maze_set_cell(n,msy,0xffff);
+    for(n=x1;n<=x2;n++)
+      // Mark wall with random solid interior wall
+      maze_set_cell(n,msy,0x8000+13+rand8(3));
     if (x2-x1) n=rand8(x2-x1)+x1; else n=x1;
     n|=1; // corridors on odd coordinates, walls on even
     maze_set_cell(n,msy,0);
@@ -68,7 +70,7 @@ void divide_maze(uint8_t x1,uint8_t y1,uint8_t x2,uint8_t y2)
     
   } else {
     // Split vertically
-    for(n=y1;n<=y2;n++) maze_set_cell(msx,n,0xffff);  
+    for(n=y1;n<=y2;n++) maze_set_cell(msx,n,0x8000+13+rand8(3));
     if (y2-y1) n=rand8(y2-y1)+y1; else n=y1;
     n|=1; // corridors on odd coordinates, walls on even
     maze_set_cell(msx,n,0);
@@ -82,6 +84,7 @@ void divide_maze(uint8_t x1,uint8_t y1,uint8_t x2,uint8_t y2)
 
 void generate_maze(uint8_t width, uint8_t height,uint32_t seed)
 {
+
   // Make mazes deterministic
   srand(seed);
   
