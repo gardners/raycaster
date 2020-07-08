@@ -675,13 +675,13 @@ void main(void)
 	print_overlaytext(9+6,23,0x10+text_colour,"return");
 
 	// Update map sprite positions based on maze size
-	if (maze_size>11) {
+	if (maze_size>15) {
 
 	  POKE(0x07FC,0x400/0x40);
 	  POKE(0x07FF,0x600/0x40);
 	  
-	  POKE(0xD00F,maze_size-13);
-	  POKE(0xD009,maze_size-13);
+	  POKE(0xD00F,maze_size-15);
+	  POKE(0xD009,maze_size-15);
 
 	  POKE(0xD056,63); // extended height sprites are 63 px tall
 	  
@@ -691,8 +691,8 @@ void main(void)
 	  POKE(0x07FC,0x480/0x40);
 	  POKE(0x07FF,0x680/0x40);
 	  
-	  POKE(0xD00F,maze_size);
-	  POKE(0xD009,maze_size);
+	  POKE(0xD00F,maze_size+2);
+	  POKE(0xD009,maze_size+2);
 
 	  POKE(0xD056,63-16); // extended height sprites are 63 px tall
 	}
@@ -722,6 +722,8 @@ void main(void)
       if (reached_exit)
 	{
 	  // Display congratulations message and report on time taken
+
+	  POKE(0xD015,0); // Hide all sprites
 	  
 	  print_overlaytext(3,3,0,"congratulations! you escaped this");
 
@@ -790,10 +792,10 @@ void main(void)
 
       // And set our pulsing location sprite in the right place
       POKE(0xD000,map_x_current+a);
-      if (maze_size>11)
-	POKE(0xD001,maze_size-13+(63-b));
+      if (maze_size>15)
+	POKE(0xD001,maze_size-15+(63-b));
       else
-	POKE(0xD001,maze_size+(47-b));
+	POKE(0xD001,maze_size+2+(47-b));
 
       // Toggle colour of our little square
       POKE(0xD027,PEEK(0xD027)^0x01);
@@ -882,7 +884,7 @@ void main(void)
 	py-=MulCos(pa,STEP*last_frame_duration);
 	px-=MulSin(pa,STEP*last_frame_duration);
 
-	if (((px>>8)>=(maze_size-1))||((py>>8)>=(maze_size-1))) {
+	if (((px>>8)+(py>>8))>=(2*maze_size-3)) {
 	  // Reached the exit by GOING BACKWARDS!
 	  // You should really get some kind of penalty for this
 	  duration_minutes=PEEK(0xDC0A);
@@ -901,7 +903,7 @@ void main(void)
 	py+=MulCos(pa,STEP*last_frame_duration);	    
 	px+=MulSin(pa,STEP*last_frame_duration);
 
-	if (((px>>8)>=(maze_size-1))||((py>>8)>=(maze_size-1))) {
+	if (((px>>8)+(py>>8))>=(2*maze_size-3)) {
 	  // Reached the exit 
 	  duration_minutes=PEEK(0xDC0A);
 	  duration_seconds=PEEK(0xDC09);
