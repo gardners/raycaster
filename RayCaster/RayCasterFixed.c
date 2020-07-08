@@ -550,19 +550,34 @@ unsigned long x_offset;
 uint16_t sso2;
 unsigned char texture_y_offset;
 
+uint8_t double_x=1;
+uint8_t prev_x,prev_y;
+uint8_t prev_height;
+
 void TraceFrameFast(uint16_t playerX, uint16_t playerY, uint16_t playerDirection)
 {
     Start(playerX, playerY, playerDirection);
 
 
     x_offset=0x40000;
+
+    prev_x=0xff;
+    prev_y=0xff;
+    prev_height=0x00;
     
-    for(x = 0; x < SCREEN_WIDTH; x++)
+    for(x = double_x; x < SCREEN_WIDTH; x+=(1+double_x))
     {
 
-      if (x) {
-	if (x&7) x_offset++;
-	else x_offset+=64*25-7;
+      if (double_x) {
+	if (x) {
+	  if ((x&7)!=7) x_offset+=2;
+	  else x_offset+=64*25-6;
+	}
+      } else {
+	if (x) {
+	  if (x&7) x_offset++;
+	  else x_offset+=64*25-7;
+	}
       }
 
       //      POKE(0xD020,0x80);
@@ -604,7 +619,17 @@ void TraceFrameFast(uint16_t playerX, uint16_t playerY, uint16_t playerDirection
 	  ws,
 	  0x00,0xa0,
 	  0x08,0x00);
+	if (double_x)
+	  dma_stepped_copy(SKY_TEXTURE_ADDRESS+(320*(rayAngle^0x200)/1024)*64
+			   ,x_offset+1,
+			   ws,
+			   0x00,0xa0,
+			   0x08,0x00);
 
+       
+
+
+	
       //      POKE(0xD020,0x00);
 	
 	// Use DMA to copy texture.
@@ -613,6 +638,12 @@ void TraceFrameFast(uint16_t playerX, uint16_t playerY, uint16_t playerDirection
 			 sso2,
 			 0+(ts>>10),ts>>2,
 			 0x08,0x00);
+	if (double_x)
+	  dma_stepped_copy(cached_texture_line(TEXTURE_ADDRESS+texture_offset+(tx<<6)+texture_y_offset),
+			   1+x_offset+(ws<<3),
+			   sso2,
+			   0+(ts>>10),ts>>2,
+			   0x08,0x00);
 
 	//      POKE(0xD020,0x00);
 	
@@ -622,10 +653,22 @@ void TraceFrameFast(uint16_t playerX, uint16_t playerY, uint16_t playerDirection
 			 +64-(((playerX+playerY)>>4)&0x3f)
 			 // And rotate around with you
 			 +((rayAngle>>1)&0x7f)*64
-			 +(ws+sso*2),x_offset+((ws+sso2)<<3),
+			 +(ws+sso*2),
+			 x_offset+((ws+sso2)<<3),
 			 ws,
 			 0x00,0xa0,
 			 0x08,0x00);
+	if (double_x)
+	  dma_stepped_copy(FLOOR_TEXTURE_ADDRESS
+			   // Make the texture follow along a bit
+			   +64-(((playerX+playerY)>>4)&0x3f)
+			   // And rotate around with you
+			   +((rayAngle>>1)&0x7f)*64
+			   +(ws+sso*2),
+			   1+x_offset+((ws+sso2)<<3),
+			   ws,
+			   0x00,0xa0,
+			   0x08,0x00);
 	
 	//      POKE(0xD020,0x00);
 

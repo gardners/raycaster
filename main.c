@@ -482,6 +482,8 @@ uint8_t logo[5][34]={
    0x20, 0xa0, 0x20, 0x20, 0xa0, 0x20, 0xa0, 0x20, 0xa0, 0x20, 0xa0, 0xa0, 0xa0, 0x20, 0xa0, 0xa0, 0xa0,0}
 };  
 
+extern uint8_t double_x;
+
 void main(void)
 {
   asm ( "sei" );
@@ -568,6 +570,9 @@ void main(void)
 
       last_frame_start=*(uint16_t *)0xDC08;
 
+      // use low-quality high-frame rate for better impression
+      double_x=1;
+      
       TraceFrameFast(px,py,pa);
 
       last_frame_duration=(*(uint16_t *)0xDC08) - last_frame_start;
@@ -644,7 +649,7 @@ void main(void)
 	    
 	    // Slide text out to the right off the screen
 	    for(i=7;i<330;i+=8) {
-	      for(b=5;b<25;b++)
+	      for(b=1;b<25;b++)
 		overlaytext_line_x_position(b,i);
 	      while(PEEK(0xD012)!=0xfe) continue;
 	    }
@@ -725,6 +730,8 @@ void main(void)
 	  generate_idle_map();
 	  
 	  break;
+	case 0xF7:
+	  double_x^=1; break;
 	case 0x31: pa-=1; break;
 	case 0x32: pa+=1; break;
 	  // Rotate left/right
