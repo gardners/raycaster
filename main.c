@@ -439,6 +439,10 @@ uint8_t game_setup=1;
 uint8_t map_x_target=0;
 uint8_t map_x_current=0;
 
+#define PULSE_SEQ_LENGTH 8
+uint8_t text_colour=0, pulse_position=0;
+uint8_t pulse_sequence[PULSE_SEQ_LENGTH]={0,2,8,7,5,6,4,10};
+
 void generate_idle_map(void)
 {
   setup_level(13,1);
@@ -551,14 +555,18 @@ void main(void)
 	POKE(0xD018,0x16);
 	
 	for(b=0;b<25;b++) overlaytext_line_x_position(b,0x0007);
+
+	text_colour=pulse_sequence[pulse_position];
+	pulse_position++;
+	if (pulse_position>PULSE_SEQ_LENGTH) pulse_position=0;
 	
 	print_overlaytext(13,5,0x10,"MEGA MAZE 65");
 	snprintf(msg,20,"Maze Size: %d  ",maze_size);
-	print_overlaytext(13,8,0x00,msg);
+	print_overlaytext(13,8,0x00+text_colour,msg);
 	snprintf(msg,22,"Maze Seed: %08ld      ",maze_seed);
-	print_overlaytext(9,10,0x00,msg);
+	print_overlaytext(9,10,0x00+text_colour,msg);
 	snprintf(msg,22,"Press RETURN to start");
-	print_overlaytext(8,23,0x10,msg);
+	print_overlaytext(8,23,0x10+text_colour,msg);
 
 	// Update map sprite positions based on maze size
 	if (maze_size>11) {
