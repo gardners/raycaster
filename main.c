@@ -203,7 +203,9 @@ void overlaytext_clear_line(uint8_t row)
 {
   for(a=41;a<80;a++) {
     POKE(SCREEN_ADDR+row*160+a*2+0,0x20);
-    POKE(SCREEN_ADDR+row*160+a*2+1,0x00);      
+    POKE(SCREEN_ADDR+row*160+a*2+1,0x00);
+    // Clear X/Y flip bits
+    lpoke(0xff80000L+row*160+a*2+0,0x00);
   }
 }
 
@@ -318,6 +320,29 @@ void print_overlayraw(unsigned char x,unsigned char y,unsigned char colour,char 
     msg++;
     pixel_addr+=2;        
   }
+}
+
+void overlaytext_reverse_line(uint8_t row)
+{
+  /* Reverse sequence of chars and set the horizontal flip bits */
+
+  pixel_addr=SCREEN_ADDR+row*160+82;
+
+  // Get reversed list of chars
+  for(a=0;a<39;a++) {
+    // Use lpeek() to read screen, since it is under ROM 
+    msg[a]=lpeek(pixel_addr+(38-a)*2);
+    msg[40+a]=lpeek(0xff80000-SCREEN_ADDR+pixel_addr+1+(38-a)*2);
+  }
+
+  // Put them back 
+  for(a=0;a<39;a++) {
+    POKE(pixel_addr,msg[a]);
+    lpoke(0xff80000L-SCREEN_ADDR+pixel_addr+0,0x40);
+    lpoke(0xff80000L-SCREEN_ADDR+pixel_addr+1,msg[40+a]);
+    pixel_addr+=2;
+  }
+
 }
 
 uint16_t last_frame_start=0;
@@ -486,7 +511,47 @@ uint8_t logo[5][34]={
    0x20, 0xa0, 0x20, 0x20, 0xa0, 0x20, 0xa0, 0x20, 0xa0, 0x20, 0xa0, 0xa0, 0xa0, 0x20, 0xa0, 0xa0, 0xa0,0}
 };  
 
+uint8_t last_tod_seconds=0;
+uint8_t fps=0;
+uint8_t show_diags=0;
+
+uint8_t duration_minutes,duration_seconds,duration_tenths;
+
 extern uint8_t double_x;
+
+uint8_t reached_exit=0;
+
+void start_level(void)
+{	    
+  // 100 million mazes per size, with different seed range for each
+  // to prevent similarity of initial passages
+  setup_level(maze_size,maze_seed+(maze_size/2)*100000000);
+  px=0x180; py=0x180; pa=0;
+  // Make sure we don't start facing a wall
+  if (IsWall(1,2)) pa=0x100;
+  
+  // Slide text out to the right off the screen
+  for(i=7;i<330;i+=8) {
+    for(b=1;b<25;b++)
+      overlaytext_line_x_position(b,i);
+    while(PEEK(0xD012)!=0xfe) continue;
+  }
+  for(b=0;b<25;b++)
+    overlaytext_clear_line(b);
+  // MAP sprites visible
+  POKE(0xD015,0x91);
+  
+  // Allow mouse to generate full range of rotations, and place mouse in the
+  // middle
+  mouse_set_bounding_box(0,0,1023,1023);
+  mouse_x=512; mouse_y=512;
+  
+  // Reset TOD
+  POKE(0xDC08,0);
+  POKE(0xDC09,0);
+  POKE(0xDC0A,0);
+  POKE(0xDC0B,0);
+}
 
 void main(void)
 {
@@ -571,18 +636,18 @@ void main(void)
 
 	pa+=last_frame_duration;
 	pa&=0x3ff;
-
-      last_frame_start=*(uint16_t *)0xDC08;
-
-      // use low-quality high-frame rate for better impression
-      double_x=1;
-      
-      TraceFrameFast(px,py,pa);
-
-      last_frame_duration=(*(uint16_t *)0xDC08) - last_frame_start;
-      last_frame_duration&=0xff;
-      while (last_frame_duration>9) last_frame_duration+=10;
-
+	
+	last_frame_start=*(uint16_t *)0xDC08;
+	
+	// use low-quality high-frame rate for better impression
+	double_x=1;
+	
+	TraceFrameFast(px,py,pa);
+	
+	last_frame_duration=(*(uint16_t *)0xDC08) - last_frame_start;
+	last_frame_duration&=0xff;
+	while (last_frame_duration>9) last_frame_duration+=10;
+	
 	
 	// Limit mouse to screen
 	mouse_set_bounding_box(0,0,319,199);
@@ -592,6 +657,8 @@ void main(void)
 	
 	for(b=0;b<25;b++) overlaytext_line_x_position(b,0x0007);
 
+	overlaytext_clear_line(0);
+	
 	text_colour=pulse_sequence[pulse_position];
 	pulse_position++;
 	if (pulse_position>PULSE_SEQ_LENGTH) pulse_position=0;
@@ -644,29 +711,7 @@ void main(void)
 	  case 0x0d:
 	    // Start game
 	    game_setup=0;
-	    // 100 million mazes per size, with different seed range for each
-	    // to prevent similarity of initial passages
-	    setup_level(maze_size,maze_seed+(maze_size/2)*100000000);
-	    px=0x180; py=0x180; pa=0;
-	    // Make sure we don't start facing a wall
-	    if (IsWall(1,2)) pa=0x100;
-	    
-	    // Slide text out to the right off the screen
-	    for(i=7;i<330;i+=8) {
-	      for(b=1;b<25;b++)
-		overlaytext_line_x_position(b,i);
-	      while(PEEK(0xD012)!=0xfe) continue;
-	    }
-	    for(b=0;b<25;b++)
-	      overlaytext_clear_line(b);
-	    // MAP sprites visible
-	    POKE(0xD015,0x91);
-
-	    // Allow mouse to generate full range of rotations, and place mouse in the
-	    // middle
-	    mouse_set_bounding_box(0,0,1023,1023);
-	    mouse_x=512; mouse_y=512;
-	    
+	    start_level();	    
 	  }
 	  POKE(0xD610,0);
 	}
@@ -674,6 +719,68 @@ void main(void)
 	continue;
       }
 
+      if (reached_exit)
+	{
+	  // Display congratulations message and report on time taken
+	  
+	  print_overlaytext(3,3,0,"congratulations! you escaped this");
+
+	  overlaytext_clear_line(0);
+	  overlaytext_clear_line(1);
+
+	  // We work around a bug with raster-buffer based overlay text
+	  // where the top most row of pixels in the first few columns
+	  // is missing.
+	  for(i=0;i<5;i++) print_overlayraw(3,i+7,0x02,logo[i]);
+
+	  snprintf(msg,40,"you escaped in %d minutes, %d.%d secs",
+		   duration_minutes,duration_seconds,duration_tenths);
+	  print_overlaytext((39-strlen(msg))/2,15,0,msg);
+	  
+	  print_overlaytext(7,20,0,"press return for next maze");
+	  print_overlaytext(7+6,20,0+0x10,"return");
+
+	  print_overlaytext(3,22,0,"or run/stop to return to the menu");
+	  print_overlaytext(3+3,22,0+0x10,"run/stop");
+
+	  // Show it backwards if you exited the level backwards
+	  if (reached_exit==2) {
+	    for(i=0;i<25;i++) overlaytext_reverse_line(i);
+	  }
+
+	  for(b=0;b<25;b++) overlaytext_line_x_position(b,0x0007);
+	  
+	  while(reached_exit) {
+
+	    if (!last_frame_duration) last_frame_duration=1;
+	    if (reached_exit==1) pa+=last_frame_duration;
+	    else  pa-=last_frame_duration;
+	    pa&=0x3ff;
+	    TraceFrameFast(px,py,pa);
+	    
+	    if (PEEK(0xD610)) {
+	      switch(PEEK(0xD610)) {
+	      case 0x03:
+		POKE(0xD610,0);
+		game_setup=1;
+		reached_exit=0;
+		generate_idle_map();
+		for(b=0;b<25;b++) overlaytext_clear_line(b);	      
+		break;
+	      case 0x0d: case 0x20:
+		POKE(0xD610,0);
+		maze_seed++;
+		start_level();
+		reached_exit=0;	      
+		break;
+	      }
+	    }
+	    
+	  }
+	  
+	  continue;
+	}
+      
       
       
       // Update map sprite based on where we are
@@ -733,12 +840,14 @@ void main(void)
 	  generate_idle_map();
 	  
 	  break;
+	case 0xF3:
+	  show_diags^=1; break;
 	case 0xF7:
 	  double_x^=1; break;
 	case 0x31: pa-=1; break;
 	case 0x32: pa+=1; break;
 	  // Rotate left/right
-	case 0xF3: diag_mode^=1;
+	case 0xF2: diag_mode^=1;
 	  if (diag_mode) text80_mode();
 	  else graphics_mode();
 	  break;
@@ -772,8 +881,18 @@ void main(void)
       if (back_held) {
 	py-=MulCos(pa,STEP*last_frame_duration);
 	px-=MulSin(pa,STEP*last_frame_duration);
+
+	if (((px>>8)>=(maze_size-1))||((py>>8)>=(maze_size-1))) {
+	  // Reached the exit by GOING BACKWARDS!
+	  // You should really get some kind of penalty for this
+	  duration_minutes=PEEK(0xDC0A);
+	  duration_seconds=PEEK(0xDC09);
+	  duration_tenths=PEEK(0xDC08);
+	  reached_exit=2;	  
+	}	    
+
 	
-	if (IsWall(px>>8,py>>8)) {
+	if (IsWall(px>>8,py>>8)) {	  
 	  py+=MulCos(pa,STEP*last_frame_duration);	    
 	  px+=MulSin(pa,STEP*last_frame_duration);
 	}
@@ -782,6 +901,14 @@ void main(void)
 	py+=MulCos(pa,STEP*last_frame_duration);	    
 	px+=MulSin(pa,STEP*last_frame_duration);
 
+	if (((px>>8)>=(maze_size-1))||((py>>8)>=(maze_size-1))) {
+	  // Reached the exit 
+	  duration_minutes=PEEK(0xDC0A);
+	  duration_seconds=PEEK(0xDC09);
+	  duration_tenths=PEEK(0xDC08);
+	  reached_exit=1;
+	}	    	
+	
 	if (IsWall(px>>8,py>>8)) {
 	  py-=MulCos(pa,STEP*last_frame_duration);
 	  px-=MulSin(pa,STEP*last_frame_duration);
@@ -796,6 +923,23 @@ void main(void)
 
       TraceFrameFast(px,py,pa);
 
+      if (show_diags) {
+	if (last_tod_seconds!=PEEK(0xDC09)) {
+	  snprintf(msg,22,"%d fps   ",fps);
+	  print_overlaytext(0,0,0x00,msg);
+	  fps=1;
+	} else fps++;
+	last_tod_seconds=PEEK(0xDC09);
+
+	overlaytext_line_x_position(1,7);
+	snprintf(msg,40,"player @ %d,%d    ",px>>8,py>>8);
+	print_overlaytext(0,1,0x00,msg);
+      } else {
+	overlaytext_clear_line(0);
+	snprintf(msg,22,"%02d:%02d.%d",PEEK(0xDC0A),PEEK(0xDC09),PEEK(0xDC08));
+	print_overlaytext(0,0,0x00,msg);
+      }
+      
       last_frame_duration=(*(uint16_t *)0xDC08) - last_frame_start;
       last_frame_duration&=0xff;
       while (last_frame_duration>9) last_frame_duration+=10;
