@@ -9,9 +9,13 @@
 #include <fileio.h>
 #include <debug.h>
 #include <random.h>
+#include <mouse.h>
 
 #define SCREEN_ADDR 0xE000L
 #define TEXTURE_ADDRESS 0x8000000L
+
+extern unsigned short mouse_x,mouse_y;
+unsigned short last_mouse_x;
 
 // These are the step per jiffy. Multiply by 10 for movement per second
 // 256 = one whole square
@@ -513,6 +517,9 @@ void main(void)
       if (game_setup) {
 	POKE(0xD015,0);
 
+	// Limit mouse to screen
+	mouse_set_bounding_box(0,0,319,199);
+
 	// Force lower-case font
 	POKE(0xD018,0x16);
 	
@@ -580,6 +587,12 @@ void main(void)
 	      overlaytext_clear_line(b);
 	    // MAP sprites visible
 	    POKE(0xD015,0x91);
+
+	    // Allow mouse to generate full range of rotations, and place mouse in the
+	    // middle
+	    mouse_set_bounding_box(0,0,1023,1023);
+	    mouse_x=512; mouse_y=512;
+	    
 	  }
 	  POKE(0xD610,0);
 	}
@@ -624,6 +637,13 @@ void main(void)
       else back_held|=(~PEEK(0xD613))&0x80; // Cursor down      
       if (PEEK(0xD60F)&0x01) left_held=1;
       else right_held|=(~PEEK(0xD613))&0x04; // Cursor right
+
+      // Update viewing angle based on mouse movement
+      // X direction on my mouse is broken, so I allow Y to influence also
+      // This should get removed at some point ;)
+      mouse_update_position(0,0);
+      pa+=mouse_x+mouse_y-1024;
+      mouse_x=512; mouse_y=512;
       
       if (PEEK(0xD610)) {
 	switch(PEEK(0xD610)) {
