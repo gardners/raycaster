@@ -27,11 +27,12 @@ CBMCONVERT=	cbmconvert/cbmconvert
 
 SRCDIR=	src
 
-all:	WANDER.D81
+all:	MEGAMAZE.D81
 
-WANDER.D81: raycaster.prg textures.bin
-	rm WANDER.D81
-	cbmconvert -D8 WANDER.D81 raycaster.prg textures.bin
+MEGAMAZE.D81: raycaster.prg textures.bin
+	touch MEGAMAZE.D81
+	rm MEGAMAZE.D81
+	cbmconvert -D8 MEGAMAZE.D81 raycaster.prg textures.bin
 
 $(SDCARD_DIR)/FREEZER.M65:
 	git submodule init

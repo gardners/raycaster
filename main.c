@@ -501,7 +501,7 @@ void main(void)
 
 	for(b=0;b<25;b++) overlaytext_line_x_position(b,0x0007);
 	
-	print_overlaytext(8,5,0x10,"ESCAPE FROM WONDERLAND");
+	print_overlaytext(13,5,0x10,"MEGA MAZE 65");
 	snprintf(msg,20,"Maze Size: %d  ",maze_size);
 	print_overlaytext(10,8,0x00,msg);
 	snprintf(msg,22,"Maze Seed: %-9ld      ",maze_seed);
