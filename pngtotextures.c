@@ -38,8 +38,6 @@ png_bytep * row_pointers;
 FILE *infile;
 FILE *outfile;
 
-unsigned char sprite_data[65536];
-
 /* ============================================================= */
 
 void abort_(const char * s, ...)
@@ -93,7 +91,7 @@ void read_png_file(char* file_name)
   color_type = png_get_color_type(png_ptr, info_ptr);
   bit_depth = png_get_bit_depth(png_ptr, info_ptr);
 
-  fprintf(stderr,"Input-file is: width=%d, height=%d.\n", width, height);
+  fprintf(stderr,"Input-file is: width=%d, height=%d, bit_depth=%d.\n", width, height,bit_depth);
 
   number_of_passes = png_set_interlace_handling(png_ptr);
   png_read_update_info(png_ptr, info_ptr);
@@ -117,9 +115,9 @@ void read_png_file(char* file_name)
 
 
 struct rgb {
-  int r;
-  int g;
-  int b;
+  unsigned int r;
+  unsigned int g;
+  unsigned int b;
 };
 
 struct rgb palette[256];
@@ -147,6 +145,7 @@ int palette_lookup(int r,int g, int b)
   palette[palette_index].r=r;
   palette[palette_index].g=g;
   palette[palette_index].b=b;
+  
   return palette_index++;
   
 }
