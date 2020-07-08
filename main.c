@@ -328,6 +328,8 @@ uint8_t back_held=0;
 uint8_t right_held=0;
 uint8_t left_held=0;
 
+void setup_wall_bits(void);
+
 void mapsprite_set_pixel(uint8_t x,uint8_t y)
 {
   if (x>63) return;
@@ -348,6 +350,7 @@ void setup_level(uint8_t size,uint32_t seed)
   // Must have odd size, so walls an corridors can co-exist.
   
   generate_maze(size,size,seed);
+  setup_wall_bits();
 #if 0
   for(px=0;px<40;px++)
     for(py=0;py<40;py++) {
@@ -465,6 +468,7 @@ void generate_idle_map(void)
   for(px=6;px<9;px++)
     for(py=6;py<9;py++)
       maze_set_cell(px,py,0);
+  setup_wall_bits();
 
   px=0x780; py=0x780; pa=0x100;  
 }
@@ -635,7 +639,7 @@ void main(void)
 	  switch(PEEK(0xD610)) {
 	  case 0x11: maze_seed--; if (maze_seed<1) maze_seed=99999999; break;
 	  case 0x91: maze_seed++; if (maze_seed>99999999) maze_seed=1; break;
-	  case 0x1d: maze_size+=2; if (maze_size>63) maze_size=63; break;
+	  case 0x1d: maze_size+=2; if (maze_size>55) maze_size=55; break;
 	  case 0x9d: maze_size-=2; if (maze_size<5) maze_size=5; break;
 	  case 0x0d:
 	    // Start game

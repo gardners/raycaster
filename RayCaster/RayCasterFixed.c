@@ -33,6 +33,33 @@ extern char diag_mode;
 
 void print_text80(unsigned char x,unsigned char y,unsigned char colour,char *msg);
 
+void clear_wall_bits(void)
+{
+  lfill(0xc000,0x00,0xf00);
+}
+
+void set_wall_bit(uint8_t X,uint8_t Y)
+{
+  POKE(0xC000+(Y<<3)+(X>>3),
+       (PEEK(0xC000+(Y<<3)+(X>>3))|(1<<(X&7))));
+}
+
+uint8_t ttx,tty;
+void setup_wall_bits(void)
+{
+  // XXX $CFxx seems to end up with variables from CC65 even though
+  // it shouldn't, so we can't use that area.  Limits maze size to 55
+  clear_wall_bits();
+  for(ttx=0;ttx<64;ttx++)
+    for(tty=0;tty<56;tty++)
+      if (maze_get_cell(ttx,tty)&0x8000) {
+	set_wall_bit(ttx,tty);
+      }
+  
+}
+
+#define IsWallFast(X,Y) (PEEK(0xC000+(Y<<3)+(X>>3))&(1<<(X&7)))
+//#define IsWallFast IsWall
 
 void setup_multiplier(void)
 {
@@ -237,7 +264,7 @@ void CalculateDistance(
             for(;;)
             {
                 tileY += tileStepY;
-                if(IsWall(tileX, tileY))
+                if(IsWallFast(tileX, tileY))
                 {
 		  *texture_num=(maze_get_cell(tileX,tileY)&0xff);
 		  goto HorizontalHit;
@@ -254,7 +281,7 @@ void CalculateDistance(
             for(;;)
             {
                 tileX += tileStepX;
-                if(IsWall(tileX, tileY))
+                if(IsWallFast(tileX, tileY))
                 {
 		  *texture_num=maze_get_cell(tileX,tileY);
 		  goto VerticalHit;
@@ -304,7 +331,7 @@ void CalculateDistance(
 	  while((tileStepY == 1 && ((interceptY >> 8) < tileY)) || (tileStepY == -1 && ((interceptY >> 8) >= tileY)))
             {
                 tileX += tileStepX;
-                if(IsWall(tileX, tileY))
+                if(IsWallFast(tileX, tileY))
                 {
 		  *texture_num=(maze_get_cell(tileX,tileY)&0xff);
 		  goto VerticalHit;
@@ -314,7 +341,7 @@ void CalculateDistance(
             while((tileStepX == 1 && (interceptX >> 8 < tileX)) || (tileStepX == -1 && (interceptX >> 8 >= tileX)))
             {
                 tileY += tileStepY;
-                if(IsWall(tileX, tileY))
+                if(IsWallFast(tileX, tileY))
                 {
 		  *texture_num=(maze_get_cell(tileX,tileY)&0xff);
 		  goto HorizontalHit;
