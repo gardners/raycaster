@@ -29,10 +29,18 @@ SRCDIR=	src
 
 all:	MEGAMAZE.D81
 
-MEGAMAZE.D81: raycaster.prg textures.bin
+exomized.prg:	raycaster.prg
+	exomizer sfx basic -B raycaster.prg -o exomized.prg
+
+# we still have some problems starting exomized things from C65 mode,
+# so we just skip that for now
+autoboot.c65:	c65toc64wrapper.prg exomized.prg
+	cat c65toc64wrapper.prg raycaster.prg > autoboot.c65
+
+MEGAMAZE.D81: autoboot.c65 textures.bin
 	touch MEGAMAZE.D81
 	rm MEGAMAZE.D81
-	cbmconvert -D8 MEGAMAZE.D81 raycaster.prg textures.bin
+	cbmconvert -D8 MEGAMAZE.D81 autoboot.c65 textures.bin
 
 $(SDCARD_DIR)/FREEZER.M65:
 	git submodule init

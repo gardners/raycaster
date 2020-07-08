@@ -29,7 +29,7 @@ void generate_maze(uint8_t width, uint8_t height,uint32_t seed);
 uint16_t maze_get_cell(uint8_t x,uint8_t y);
 void maze_set_cell(uint8_t x,uint8_t y,uint16_t v);
 
-uint8_t maze_size=7;
+uint8_t maze_size=9;
 uint32_t maze_seed=1;
 
 unsigned short i,j;
@@ -418,6 +418,12 @@ uint16_t load_textures(unsigned char * file_name)
       return 0;
     }
 
+  // Disable interrupts again, as DOS will have enabled them  
+  asm ( "sei" );
+  // And M65 IO
+  POKE(0xD02F,0x47);
+  POKE(0xD02F,0x53);
+  
   texture_count=texture_offset>>12;
   return texture_offset>>12;
 }
@@ -426,15 +432,14 @@ uint8_t game_setup=1;
 
 void main(void)
 {
-  char dma_draw=1;
-
-    asm ( "sei" );
+  asm ( "sei" );
 
   // Fast CPU, M65 IO
   POKE(0,65);
   POKE(0xD02F,0x47);
   POKE(0xD02F,0x53);
 
+  // Clear key input buffer
   while(PEEK(0xD610)) POKE(0xD610,0);
 
   POKE(0xD020,0);
@@ -446,12 +451,14 @@ void main(void)
   load_textures("textures.bin");
   printf("Loaded %d textures.\n",texture_count);
   
-  // M65 IO again after using DOS, as DOS drops us back to C64 IO
-  POKE(0xD02F,0x47);
-  POKE(0xD02F,0x53);
+  // Force lower-case font
+  POKE(0xD018,0x16);
 
   graphics_mode();
 
+  // Disable hotregs
+  POKE(0xD05D,PEEK(0xD05D)&0x7f);
+  
   setup_multiplier();
 
   setup_level(5,1);
@@ -504,27 +511,46 @@ void main(void)
       if (game_setup) {
 	POKE(0xD015,0);
 
+	// Force lower-case font
+	POKE(0xD018,0x16);
+	
 	for(b=0;b<25;b++) overlaytext_line_x_position(b,0x0007);
 	
 	print_overlaytext(13,5,0x10,"MEGA MAZE 65");
 	snprintf(msg,20,"Maze Size: %d  ",maze_size);
-	print_overlaytext(10,8,0x00,msg);
-	snprintf(msg,22,"Maze Seed: %-9ld      ",maze_seed);
+	print_overlaytext(13,8,0x00,msg);
+	snprintf(msg,22,"Maze Seed: %08ld      ",maze_seed);
 	print_overlaytext(10,10,0x00,msg);
 	snprintf(msg,22,"Press RETURN to start");
 	print_overlaytext(8,20,0x10,msg);
 
+	// Update map sprite positions based on maze size
+	if (maze_size>8) {
+	  POKE(0xD00F,maze_size-8);
+	  POKE(0xD009,maze_size-8);
+	} else {
+	  POKE(0xD00F,0);
+	  POKE(0xD009,0);
+	}
+	POKE(0xD00E,0x18+63-maze_size);
+	POKE(0xD008,0x18+63-maze_size);
+
+	
 	if (PEEK(0xD610)) {
 	  switch(PEEK(0xD610)) {
-	  case 0x11: maze_seed--; break;
-	  case 0x91: maze_seed++; break;
+	  case 0x11: maze_seed--; if (maze_seed<1) maze_seed=99999999; break;
+	  case 0x91: maze_seed++; if (maze_seed>99999999) maze_seed=1; break;
 	  case 0x1d: maze_size+=2; if (maze_size>63) maze_size=63; break;
 	  case 0x9d: maze_size-=2; if (maze_size<5) maze_size=5; break;
 	  case 0x0d:
 	    // Start game
 	    game_setup=0;
-	    setup_level(maze_size,maze_seed);
+	    // 100 million mazes per size, with different seed range for each
+	    // to prevent similarity of initial passages
+	    setup_level(maze_size,maze_seed+(maze_size/2)*100000000);
 	    px=0x180; py=0x180; pa=0;
+	    // Make sure we don't start facing a wall
+	    if (IsWall(1,2)) pa=0x100;
 	    
 	    // Slide text out to the right off the screen
 	    for(i=7;i<330;i+=8) {
@@ -551,7 +577,9 @@ void main(void)
       if (!IsWall(a,b)) mapsprite_set_pixel(a,b);
 
       // And set our pulsing location sprite in the right place
-      POKE(0xD000,0x18+a); POKE(0xD001,0x32+63-b);
+      POKE(0xD000,0x18+(63-maze_size)+a);
+      if (maze_size>8) POKE(0xD001,maze_size-8+(63-b));
+      else POKE(0xD001,0+(63-b));
       POKE(0xD027,PEEK(0xD027)^0x80);
 
       
@@ -581,7 +609,6 @@ void main(void)
 	  game_setup=1; break;
 	case 0x31: pa-=1; break;
 	case 0x32: pa+=1; break;
-	case 0xF1: dma_draw^=1; break;
 	  // Rotate left/right
 	case 0xF3: diag_mode^=1;
 	  if (diag_mode) text80_mode();
@@ -638,12 +665,9 @@ void main(void)
       // Draw frame and keep track of how long it took
       // Use CIA RTC to time it, so we measure in 10ths of seconds
       last_frame_start=*(uint16_t *)0xDC08;
-      if (dma_draw)
-	TraceFrameFast(px,py,pa);
-#if 0
-      else
-	TraceFrame(px,py,pa);
-#endif
+
+      TraceFrameFast(px,py,pa);
+
       last_frame_duration=(*(uint16_t *)0xDC08) - last_frame_start;
       last_frame_duration&=0xff;
       while (last_frame_duration>9) last_frame_duration+=10;

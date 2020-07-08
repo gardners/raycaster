@@ -85,6 +85,10 @@ void divide_maze(uint8_t x1,uint8_t y1,uint8_t x2,uint8_t y2)
 void generate_maze(uint8_t width, uint8_t height,uint32_t seed)
 {
 
+  // Make sure we have MEGA65 IO mode
+  POKE(0xD02F,0x47);
+  POKE(0xD02F,0x53);
+  
   // Make mazes deterministic
   srand(seed);
   
