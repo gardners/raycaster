@@ -592,12 +592,12 @@ void TraceFrameFast(uint16_t playerX, uint16_t playerY, uint16_t playerDirection
     prev_y=0xff;
     prev_height=0x00;
     
-    for(x = double_x; x < SCREEN_WIDTH; x+=(1+double_x))
+    for(x = 0; x < SCREEN_WIDTH; x+=(1+double_x))
     {
 
       if (double_x) {
 	if (x) {
-	  if ((x&7)!=7) x_offset+=2;
+	  if ((x&7)) x_offset+=2;
 	  else x_offset+=64*25-6;
 	}
       } else {
@@ -667,7 +667,7 @@ void TraceFrameFast(uint16_t playerX, uint16_t playerY, uint16_t playerDirection
 			 0x08,0x00);
 	if (double_x)
 	  dma_stepped_copy(cached_texture_line(TEXTURE_ADDRESS+texture_offset+(tx<<6)+texture_y_offset),
-			   1+x_offset+(ws<<3),
+			   x_offset+1+(ws<<3),
 			   sso2,
 			   0+(ts>>10),ts>>2,
 			   0x08,0x00);
@@ -692,7 +692,7 @@ void TraceFrameFast(uint16_t playerX, uint16_t playerY, uint16_t playerDirection
 			   // And rotate around with you
 			   +((rayAngle>>1)&0x7f)*64
 			   +(ws+sso*2),
-			   1+x_offset+((ws+sso2)<<3),
+			   x_offset+1+((ws+sso2)<<3),
 			   ws,
 			   0x00,0xa0,
 			   0x08,0x00);
