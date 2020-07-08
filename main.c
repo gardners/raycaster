@@ -429,6 +429,8 @@ uint16_t load_textures(unsigned char * file_name)
 }
 
 uint8_t game_setup=1;
+uint8_t map_x_target=0;
+uint8_t map_x_current=0;
 
 void main(void)
 {
@@ -546,6 +548,8 @@ void main(void)
 
 	  POKE(0xD056,63-16); // extended height sprites are 63 px tall
 	}
+	map_x_target=0x18+63-maze_size;
+	map_x_current=map_x_target;
 	POKE(0xD00E,0x18+63-maze_size);
 	POKE(0xD008,0x18+63-maze_size);
 
@@ -591,7 +595,7 @@ void main(void)
       if (!IsWall(a,b)) mapsprite_set_pixel(a,b);
 
       // And set our pulsing location sprite in the right place
-      POKE(0xD000,0x18+(63-maze_size)+a);
+      POKE(0xD000,map_x_current+(63-maze_size)+a);
       if (maze_size>11)
 	POKE(0xD001,maze_size-13+(63-b));
       else
@@ -623,6 +627,15 @@ void main(void)
       
       if (PEEK(0xD610)) {
 	switch(PEEK(0xD610)) {
+	case 0x4d: case 0x6d:
+	  POKE(0xD020,1);
+	  // 87 = just off right edge
+	  if (map_x_target==88) {
+	    map_x_target=0x18+63-maze_size;
+	  } else
+	    map_x_target=88;
+
+	  break;
 	case 0x03:
 	  game_setup=1; break;
 	case 0x31: pa-=1; break;
@@ -690,5 +703,21 @@ void main(void)
       last_frame_duration&=0xff;
       while (last_frame_duration>9) last_frame_duration+=10;
 
+      // XXX This looks horribly jerky. It should instead be done on a
+      // raster interrupt, which we will need to have at some point
+      // for background music
+      if (map_x_current<map_x_target) {
+	map_x_current+=maze_size>>2;
+	if (map_x_current>map_x_target) map_x_current=map_x_target;
+	POKE(0xD00E,map_x_current);
+	POKE(0xD008,map_x_current);
+      }
+      if (map_x_current>map_x_target) {
+	map_x_current-=maze_size>>2;
+	if (map_x_current<map_x_target) map_x_current=map_x_target;
+	POKE(0xD00E,map_x_current);
+	POKE(0xD008,map_x_current);
+      }
+      
     }
 }
