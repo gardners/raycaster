@@ -5,7 +5,12 @@
 #define LOOKUP_STORAGE extern
 #include "RayCasterTables.h"
 
+// Where we expect to find textures
 #define TEXTURE_ADDRESS 0x8000300
+// Copy in internal fast memory for the sky and floor, as they
+// get used the most.
+#define SKY_TEXTURE_ADDRESS 0x12000
+#define FLOOR_TEXTURE_ADDRESS (0x12000+(5*4096))
 
 #include "debug.h"
 
@@ -497,6 +502,22 @@ uint8_t dlist[29]={
 
 char m[160];
 
+/*
+  We can cache a whole bunch of texture lines at $12000-$1F7FF.
+  This can be used to reduce drawing time instead of using 
+  expansion ram
+*/
+
+#if 0
+uint32_t cached_texture_line(uint32_t addr)
+{
+  return addr;
+}
+#else
+// or without said caching
+#define cached_texture_line(ADDR) ADDR
+#endif
+
 void dma_stepped_copy(uint32_t src, uint32_t dst,uint16_t count,
 		      uint8_t step_src_whole,uint8_t step_src_fraction,
 		      uint8_t step_dst_whole,uint8_t step_dst_fraction)
@@ -578,19 +599,17 @@ void TraceFrameFast(uint16_t playerX, uint16_t playerY, uint16_t playerDirection
 	// For the sky, we have a stretched cloud image that we rotate around
 	// to match the view angle. It looks nice and helps the player know where they are
 	// pointed
-	dma_stepped_copy(TEXTURE_ADDRESS
-			 +(320*(rayAngle^0x200)/1024)*64
-			 ,x_offset,
-		       ws,
-		       0x00,0xa0,
-		       0x08,0x00);
+	dma_stepped_copy(SKY_TEXTURE_ADDRESS+(320*(rayAngle^0x200)/1024)*64
+	  ,x_offset,
+	  ws,
+	  0x00,0xa0,
+	  0x08,0x00);
 
       //      POKE(0xD020,0x00);
 	
 	// Use DMA to copy texture.
-      // XXX Textures are sideways in RAM compared with how we can get the DMA to step through them
-      // A truly optimised version would fix this.
-	dma_stepped_copy(TEXTURE_ADDRESS+texture_offset+(tx<<6)+texture_y_offset,x_offset+(ws<<3),
+	dma_stepped_copy(cached_texture_line(TEXTURE_ADDRESS+texture_offset+(tx<<6)+texture_y_offset),
+			 x_offset+(ws<<3),
 			 sso2,
 			 0+(ts>>10),ts>>2,
 			 0x08,0x00);
@@ -598,7 +617,7 @@ void TraceFrameFast(uint16_t playerX, uint16_t playerY, uint16_t playerDirection
 	//      POKE(0xD020,0x00);
 	
 	// Use DMA job with stepped destination to draw floor
-	dma_stepped_copy(TEXTURE_ADDRESS+(5*4096)
+	dma_stepped_copy(FLOOR_TEXTURE_ADDRESS
 			 // Make the texture follow along a bit
 			 +64-(((playerX+playerY)>>4)&0x3f)
 			 // And rotate around with you

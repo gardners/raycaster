@@ -427,6 +427,9 @@ uint16_t load_textures(unsigned char * file_name)
   // And M65 IO
   POKE(0xD02F,0x47);
   POKE(0xD02F,0x53);
+
+  // Copy sky and floor textures to internal RAM for speed
+  lcopy(0x8000300L,0x12000L,4096*9);
   
   texture_count=texture_offset>>12;
   return texture_offset>>12;
@@ -639,11 +642,9 @@ void main(void)
       else right_held|=(~PEEK(0xD613))&0x04; // Cursor right
 
       // Update viewing angle based on mouse movement
-      // X direction on my mouse is broken, so I allow Y to influence also
-      // This should get removed at some point ;)
       mouse_update_position(0,0);
-      pa+=mouse_x+mouse_y-1024;
-      mouse_x=512; mouse_y=512;
+      pa+=mouse_x-512;
+      mouse_x=512; 
       
       if (PEEK(0xD610)) {
 	switch(PEEK(0xD610)) {
