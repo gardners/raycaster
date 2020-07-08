@@ -735,7 +735,7 @@ void main(void)
 	  // is missing.
 	  for(i=0;i<5;i++) print_overlayraw(3,i+7,0x02,logo[i]);
 
-	  snprintf(msg,40,"you escaped in %d minutes, %d.%d secs",
+	  snprintf(msg,40,"you escaped in %x minutes, %x.%d secs",
 		   duration_minutes,duration_seconds,duration_tenths);
 	  print_overlaytext((39-strlen(msg))/2,15,0,msg);
 	  
