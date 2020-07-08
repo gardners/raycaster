@@ -720,7 +720,6 @@ void main(void)
       if (PEEK(0xD610)) {
 	switch(PEEK(0xD610)) {
 	case 0x4d: case 0x6d:
-	  POKE(0xD020,1);
 	  // 87 = just off right edge
 	  if (map_x_target==88) {
 	    map_x_target=0x18+63-maze_size;
