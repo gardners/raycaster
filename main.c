@@ -439,6 +439,12 @@ uint8_t game_setup=1;
 uint8_t map_x_target=0;
 uint8_t map_x_current=0;
 
+void generate_idle_map(void)
+{
+  setup_level(13,1);
+  px=0x780; px=0x780; pa=0;  
+}
+
 void main(void)
 {
   asm ( "sei" );
@@ -470,7 +476,7 @@ void main(void)
   
   setup_multiplier();
 
-  setup_level(5,1);
+  generate_idle_map();
 
   // Set up sprite for showing map discovery
   // It sits in the upper right of the screen
@@ -520,6 +526,18 @@ void main(void)
       if (game_setup) {
 	POKE(0xD015,0);
 
+	pa+=last_frame_duration;
+	pa&=0x3ff;
+
+      last_frame_start=*(uint16_t *)0xDC08;
+
+      TraceFrameFast(px,py,pa);
+
+      last_frame_duration=(*(uint16_t *)0xDC08) - last_frame_start;
+      last_frame_duration&=0xff;
+      while (last_frame_duration>9) last_frame_duration+=10;
+
+	
 	// Limit mouse to screen
 	mouse_set_bounding_box(0,0,319,199);
 
@@ -611,7 +629,7 @@ void main(void)
       if (!IsWall(a,b)) mapsprite_set_pixel(a,b);
 
       // And set our pulsing location sprite in the right place
-      POKE(0xD000,map_x_current+(63-maze_size)+a);
+      POKE(0xD000,map_x_current+a);
       if (maze_size>11)
 	POKE(0xD001,maze_size-13+(63-b));
       else
@@ -658,7 +676,11 @@ void main(void)
 
 	  break;
 	case 0x03:
-	  game_setup=1; break;
+	  game_setup=1;
+
+	  generate_idle_map();
+	  
+	  break;
 	case 0x31: pa-=1; break;
 	case 0x32: pa+=1; break;
 	  // Rotate left/right
