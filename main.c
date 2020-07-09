@@ -524,7 +524,8 @@ void start_level(void)
 {
 
   // Switch to getting ready tune
-  music_jsr_1000(TUNE_GETTING_READY);
+  music_select_tune(TUNE_GETTING_READY);
+  music_start();
 
   // 100 million mazes per size, with different seed range for each
   // to prevent similarity of initial passages
@@ -556,7 +557,8 @@ void start_level(void)
   POKE(0xDC0B,0);
 
   // Switch to in game tune
-  music_jsr_1000(TUNE_INGAME);
+  music_select_tune(TUNE_INGAME);
+  music_start();
   
 }
 
@@ -592,7 +594,7 @@ void main(void)
   if (load_offset>256) music_loaded=1; else music_loaded=0;
 
   // Start intro music
-  music_jsr_1000(TUNE_INTRO);
+  music_select_tune(TUNE_INTRO);
   music_start();
 
   // We can't use printf() when switched from C65 mode, as C64 screen editor is not initialised
@@ -789,7 +791,8 @@ void main(void)
 	      case 0x03:
 		POKE(0xD610,0);
 		// Switch to intro tune
-		music_jsr_1000(TUNE_INTRO);
+		music_select_tune(TUNE_INTRO);
+		music_start();
 		game_setup=1;
 		reached_exit=0;
 		generate_idle_map();
@@ -864,8 +867,9 @@ void main(void)
 	  break;
 	case 0x03:
 	  // Switch to intro tune
-	  music_jsr_1000(TUNE_INTRO);
-	  
+	  music_select_tune(TUNE_INTRO);
+	  music_start();
+		
 	  game_setup=1;
 
 	  generate_idle_map();
@@ -920,7 +924,8 @@ void main(void)
 	  duration_seconds=PEEK(0xDC09);
 	  duration_tenths=PEEK(0xDC08);
 	  // Backwards victory tune
-	  music_jsr_1000(TUNE_VICTORY_BACKWARDS);
+	  music_select_tune(TUNE_VICTORY_BACKWARDS);
+	  music_start();
 	  reached_exit=2;	  
 	}	    
 
@@ -940,7 +945,8 @@ void main(void)
 	  duration_seconds=PEEK(0xDC09);
 	  duration_tenths=PEEK(0xDC08);
 	  // Forewards victory tune
-	  music_jsr_1000(TUNE_VICTORY);
+	  music_select_tune(TUNE_VICTORY);
+	  music_start();
 	  reached_exit=1;
 	}	    	
 	

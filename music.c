@@ -35,8 +35,11 @@
 
 #include <stdint.h>
 #include <memory.h>
+#include "music.h"
 
-uint8_t music_irq[24]={
+uint16_t play_addr;
+
+uint8_t music_irq[27]={
   0xa9,0xc0,      // LDA #$c0
   0xa2,0x11,      // LDX #$11
   0xa0,0x00,      // LDY #$00
@@ -50,26 +53,38 @@ uint8_t music_irq[24]={
   0x4b,           // TAZ
   0x5c,           // MAP
   0xea,           // NOP
+  0xee,0x19,0xd0, // INC $D019 to ack raster interrupt
   0x4c,0x31,0xea // JMP $EA31
 };
 
 
-void music_jsr_1000(uint8_t a)
+void music_select_tune(uint8_t a)
 {
+  music_stop();
+  
   asm ("sei");
-  // Patch routine to call $1000 with A set
+  // Patch routine to call init routine with A set
   music_irq[10]=a;
-  music_irq[12]=0x1000&0xff;
-  music_irq[21]=0x60;
+
+  play_addr=lpeek(0x1cf8c)<<8;
+  play_addr+=lpeek(0x1cf8d);
+  music_irq[12]=play_addr&0xff;
+  music_irq[13]=play_addr>>8;
+  
+  
+  music_irq[24]=0x60;
   lcopy(music_irq,0x340,63);
   lcopy(music_irq,0x1c340,63);
-  asm ("jsr $0340");  
+
+  asm ("jsr $0340");
+
 }
 
 void music_stop(void)
 {
   asm ("sei");
   // Restore IRQ handler to normal
+  POKE(0xD418,0);
   POKE(0x0314,0x31);
   POKE(0x0315,0xea);  
 }
@@ -78,17 +93,28 @@ void music_start(void)
 {
 
   asm ("sei");
+
+  play_addr=lpeek(0x1cf8e)<<8;
+  play_addr+=lpeek(0x1cf8f);
+  music_irq[12]=play_addr&0xff;
+  music_irq[13]=play_addr>>8;
+  
   music_irq[10]=0x00;
-  music_irq[12]=0x1003&0xff;
-  music_irq[21]=0x4c;
+  music_irq[24]=0x4c;
+
+  
   lcopy(music_irq,0x340,63);
   lcopy(music_irq,0x1c340,63);
   // Set IRQ handler to music routine
   POKE(0x0314,0x40);
   POKE(0x0315,0x03);
 
-  // Copy the bottom 4KB of memory
-  lcopy(0x0000L,0x001c000L,4*1024);  
+  // Disable CIA interrupt, and enable raster interrupt
+  POKE(0xDC0D,0x7f);
+  POKE(0xD012,0xFF);
+  POKE(0xD011,0x1B);
+  POKE(0xD01A,0x81);
+  POKE(0xD019,0x81);
   
   asm ("cli");
 }
