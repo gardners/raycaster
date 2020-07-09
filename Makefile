@@ -40,11 +40,10 @@ autoboot.c65:	c65toc64wrapper.prg exomized.prg
 megamaze.prg:	c65toc64wrapper.prg exomized.prg
 	cat c65toc64wrapper.prg raycaster.prg > megamaze.prg
 
-MEGAMAZE.D81: autoboot.c65 textures.bin
+MEGAMAZE.D81: autoboot.c65 textures.bin music.sid
 	touch MEGAMAZE.D81
 	rm MEGAMAZE.D81
-	cbmconvert -D8 MEGAMAZE.D81 autoboot.c65 textures.bin
-#	cbmconvert -D8 MEGAMAZE.D81 megamaze.prg textures.bin
+	cbmconvert -D8 MEGAMAZE.D81 autoboot.c65 textures.bin music.sid
 
 $(SDCARD_DIR)/FREEZER.M65:
 	git submodule init
@@ -100,6 +99,7 @@ RAYCASTERHDRS=	RayCaster/RayCasterFixed.h \
 
 RAYCASTERSRCS=	RayCaster/RayCasterFixed.c \
 		main.c \
+		music.c \
 		mazegen.c
 
 raycaster.prg:       $(RAYCASTERSRCS) $(RAYCASTERHDRS)

@@ -11,6 +11,8 @@
 #include <random.h>
 #include <mouse.h>
 
+#include "music.h"
+
 #define SCREEN_ADDR 0xE000L
 #define TEXTURE_ADDRESS 0x8000000L
 
@@ -424,37 +426,33 @@ extern uint32_t texture_offset;
 extern uint8_t texture_num;
 extern uint16_t texture_count;
 
-uint8_t disk_buffer[256];
-uint16_t load_textures(unsigned char * file_name)
+uint32_t load_offset;
+
+uint8_t disk_buffer[128];
+void load_file(unsigned char * file_name,uint32_t load_address)
 {
   cbm_k_clall();
   cbm_k_setlfs(3,8,0);
   cbm_k_setnam(file_name);
+
+  load_offset=0;
   
   cbm_k_open();
   if(!cbm_k_readst()) 
     {
       _filetype = 'p';
 
-      //      printf("Loading textures");
-      
       cbm_k_chkin(3);
-      texture_offset=0;
       
       while(!cbm_k_readst()) {
 	// Use 128 byte reads so our DMA jobs never cross a 64KB boundary
 	// (which should be fine, but something fishy is going on. Maybe
 	// more a hyperram bug than DMAgic bug?)
 	kernel_getin(disk_buffer,128);
-	lcopy(disk_buffer,0x8000000L+texture_offset,128);
-	texture_offset+=128;
+	lcopy(disk_buffer,load_address+load_offset,128);
+        load_offset+=128;
 	// Border activity while loading
 	POKE(0xD020,(PEEK(0xD020)+1)&0xf);
-	if (!(texture_offset&0xfff)) {
-	  // And show a . every texture
-	  //	  printf(".");
-	  cbm_k_chkin(3);
-	}
       }
       
     }
@@ -465,17 +463,15 @@ uint16_t load_textures(unsigned char * file_name)
       while(1) continue;
     }
 
+  cbm_k_clall();
+
   // Disable interrupts again, as DOS will have enabled them  
   asm ( "sei" );
+
   // And M65 IO
   POKE(0xD02F,0x47);
   POKE(0xD02F,0x53);
 
-  // Copy sky and floor textures to internal RAM for speed
-  lcopy(0x8000300L,0x12000L,4096*9);
-  
-  texture_count=texture_offset>>12;
-  return texture_offset>>12;
 }
 
 uint8_t game_setup=1;
@@ -521,6 +517,8 @@ uint8_t duration_minutes,duration_seconds,duration_tenths;
 extern uint8_t double_x;
 
 uint8_t reached_exit=0;
+
+uint8_t music_loaded=0;
 
 void start_level(void)
 {	    
@@ -573,7 +571,21 @@ void main(void)
   POKE(0xD031,0);
   lfill(0x0400,0x20,1000);
   
-  load_textures("textures.bin");
+  load_file("textures.bin",0x8000000L);
+  texture_offset=load_offset;
+  texture_count=(texture_offset-0x300)>>12;
+  
+  // Copy sky and floor textures to internal RAM for speed
+  // This uses $12000-$1AFFF
+  lcopy(0x8000300L,0x12000L,4096*9);
+
+  // Load music such that the SID file data starts at $1D000
+  load_file("music.sid",0x1d000L-0x7E);
+  if (load_offset>256) music_loaded=1; else music_loaded=0;
+
+  music_jsr_1000(0x00);
+  music_start();
+
   // We can't use printf() when switched from C65 mode, as C64 screen editor is not initialised
   //  printf("Loaded %d textures.\n",texture_count);
   
