@@ -427,6 +427,7 @@ extern uint16_t texture_count;
 uint8_t disk_buffer[256];
 uint16_t load_textures(unsigned char * file_name)
 {
+  cbm_k_clall();
   cbm_k_setlfs(3,8,0);
   cbm_k_setnam(file_name);
   
@@ -435,7 +436,7 @@ uint16_t load_textures(unsigned char * file_name)
     {
       _filetype = 'p';
 
-      printf("Loading textures");
+      //      printf("Loading textures");
       
       cbm_k_chkin(3);
       texture_offset=0;
@@ -451,7 +452,7 @@ uint16_t load_textures(unsigned char * file_name)
 	POKE(0xD020,(PEEK(0xD020)+1)&0xf);
 	if (!(texture_offset&0xfff)) {
 	  // And show a . every texture
-	  printf(".");
+	  //	  printf(".");
 	  cbm_k_chkin(3);
 	}
       }
@@ -459,9 +460,9 @@ uint16_t load_textures(unsigned char * file_name)
     }
   else
     {
-      printf("File could not be opened\n\r");
-      texture_count=0;
-      return 0;
+      // Red screen of death if we couldn't load
+      POKE(0xD020,2); POKE(0xD011,0);
+      while(1) continue;
     }
 
   // Disable interrupts again, as DOS will have enabled them  
@@ -561,7 +562,7 @@ void main(void)
   POKE(0,65);
   POKE(0xD02F,0x47);
   POKE(0xD02F,0x53);
-
+  
   // Clear key input buffer
   while(PEEK(0xD610)) POKE(0xD610,0);
 
@@ -569,10 +570,12 @@ void main(void)
   POKE(0xD021,0);
 
   // Clear screen
-  printf("%c",0x93);
+  POKE(0xD031,0);
+  lfill(0x0400,0x20,1000);
   
   load_textures("textures.bin");
-  printf("Loaded %d textures.\n",texture_count);
+  // We can't use printf() when switched from C65 mode, as C64 screen editor is not initialised
+  //  printf("Loaded %d textures.\n",texture_count);
   
   // Force lower-case font
   POKE(0xD018,0x16);
@@ -938,7 +941,7 @@ void main(void)
 	print_overlaytext(0,1,0x00,msg);
       } else {
 	overlaytext_clear_line(0);
-	snprintf(msg,22,"%02d:%02d.%d",PEEK(0xDC0A),PEEK(0xDC09),PEEK(0xDC08));
+	snprintf(msg,22,"%02x:%02x.%d",PEEK(0xDC0A),PEEK(0xDC09),PEEK(0xDC08));
 	print_overlaytext(0,0,0x00,msg);
       }
       

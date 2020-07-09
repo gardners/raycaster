@@ -37,10 +37,14 @@ exomized.prg:	raycaster.prg
 autoboot.c65:	c65toc64wrapper.prg exomized.prg
 	cat c65toc64wrapper.prg raycaster.prg > autoboot.c65
 
+megamaze.prg:	c65toc64wrapper.prg exomized.prg
+	cat c65toc64wrapper.prg raycaster.prg > megamaze.prg
+
 MEGAMAZE.D81: autoboot.c65 textures.bin
 	touch MEGAMAZE.D81
 	rm MEGAMAZE.D81
 	cbmconvert -D8 MEGAMAZE.D81 autoboot.c65 textures.bin
+#	cbmconvert -D8 MEGAMAZE.D81 megamaze.prg textures.bin
 
 $(SDCARD_DIR)/FREEZER.M65:
 	git submodule init
